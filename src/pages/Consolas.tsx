@@ -16,7 +16,7 @@ const Consolas = () => (
 
       {/* Imagen de fondo */}
       <img
-        src="/banner-consola.png"
+        src="/BAN-CONS.png"
         alt="Banner Consolas"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
       />

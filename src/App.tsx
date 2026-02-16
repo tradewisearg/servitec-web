@@ -11,6 +11,7 @@ import Tienda from "./pages/Tienda";
 import Condiciones from "./pages/Condiciones";
 import Presupuesto from "./pages/Presupuesto";
 import NotFound from "./pages/NotFound";
+import Stock from "./pages/Stock";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/tienda" element={<Tienda />} />
           <Route path="/condiciones" element={<Condiciones />} />
           <Route path="/presupuesto" element={<Presupuesto />} />
+          <Route path="/stock" element={<Stock />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

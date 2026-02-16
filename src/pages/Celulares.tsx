@@ -16,7 +16,7 @@ const Celulares = () => (
       
       {/* Imagen de fondo */}
       <img
-        src="/banner-celu.png"
+        src="/BAN-CEL.png"
         alt="Banner Celulares"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
       />
@@ -51,7 +51,7 @@ const Celulares = () => (
         ))}
       </div>
       <div className="container mt-10 text-center">
-        <Button asChild>
+        <Button asChild variant="primary">
           <a href="https://wa.me/5491124873190?text=Hola,%20quiero%20consultar%20por%20celulares" target="_blank" rel="noopener noreferrer">
             Consultar <ArrowRight size={18} />
           </a>

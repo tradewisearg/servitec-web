@@ -23,7 +23,7 @@ const Tienda = () => (
 
       {/* Imagen de fondo */}
       <img
-        src="/banner-tienda.png"
+        src="/BAN-TN.png"
         alt="Banner Tienda"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
       />

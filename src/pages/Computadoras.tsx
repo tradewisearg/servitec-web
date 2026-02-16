@@ -16,7 +16,7 @@ const Computadoras = () => (
 
       {/* Imagen de fondo */}
       <img
-        src="/banner-compu.png"
+        src="/BAN-PC.png"
         alt="Banner Computadoras"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
       />
@@ -36,8 +36,8 @@ const Computadoras = () => (
         {services.map((s) => (
           <Card key={s.title} className="transition-shadow hover:shadow-lg">
             <CardContent className="flex items-start gap-4 p-6">
-              <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/10">
-                <s.icon size={24} className="text-secondary" />
+              <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <s.icon size={24} className="text-primary" />
               </div>
               <div>
                 <h3 className="font-display text-lg font-semibold">{s.title}</h3>
@@ -48,7 +48,7 @@ const Computadoras = () => (
         ))}
       </div>
       <div className="container mt-10 text-center">
-        <Button asChild variant="secondary">
+        <Button asChild variant="primary">
           <a href="https://wa.me/5491124873190?text=Hola,%20quiero%20consultar%20por%20computadoras" target="_blank" rel="noopener noreferrer">
             Consultar <ArrowRight size={18} />
           </a>

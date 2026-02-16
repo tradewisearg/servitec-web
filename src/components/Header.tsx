@@ -9,6 +9,7 @@ const navLinks = [
   { label: "Computadoras", to: "/computadoras" },
   { label: "Consolas", to: "/consolas" },
   { label: "Tienda de Accesorios", to: "/tienda" },
+  { label: "Stock", to: "/stock" },
 ];
 
 const Header = () => {
