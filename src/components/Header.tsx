@@ -18,13 +18,20 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center justify-between">
+        
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <span className="font-display text-lg font-bold text-primary-foreground">S</span>
+        <Link to="/" className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg">
+            <img
+              src="/logo.png"
+              alt="ServiTec Logo"
+              className="h-full w-full object-contain"
+            />
           </div>
+
+          {/* Texto ServiTec */}
           <span className="font-display text-xl font-bold tracking-tight text-foreground">
-            Servi<span className="text-primary">tec</span>
+            Servi<span className="text-primary">Tec</span>
           </span>
         </Link>
 
@@ -34,11 +41,10 @@ const Header = () => {
             <Link
               key={link.to}
               to={link.to}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
-                location.pathname === link.to
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${location.pathname === link.to
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground"
-              }`}
+                }`}
             >
               {link.label}
             </Link>
@@ -77,11 +83,10 @@ const Header = () => {
                 key={link.to}
                 to={link.to}
                 onClick={() => setOpen(false)}
-                className={`rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                  location.pathname === link.to
+                className={`rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${location.pathname === link.to
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-muted"
-                }`}
+                  }`}
               >
                 {link.label}
               </Link>

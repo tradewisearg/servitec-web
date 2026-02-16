@@ -7,17 +7,30 @@ const services = [
   { icon: Cpu, title: "Armado de PC a Medida", desc: "Configuraciones gaming, oficina y diseño con los mejores componentes." },
   { icon: Laptop, title: "Reparación de Notebooks", desc: "Pantalla, teclado, bisagras, carga y más." },
   { icon: HardDrive, title: "Upgrade de Componentes", desc: "Ampliación de RAM, SSD y optimización de rendimiento." },
-  { icon: Fan, title: "Mantenimiento Preventivo", desc: "Limpieza interna, pasta térmica y diagnóstico completo." },
+  { icon: Fan, title: "Mantenimiento Preventivo", desc: "Limpieza interna, externa, limpieza de coolers y cambio de pasta térmica." },
 ];
 
 const Computadoras = () => (
   <Layout>
-    <section className="bg-gradient-to-br from-foreground to-foreground/95 py-20 text-background">
-      <div className="container max-w-2xl text-center">
+    <section className="relative overflow-hidden py-24 text-white">
+
+      {/* Imagen de fondo */}
+      <img
+        src="/banner-compu.png"
+        alt="Banner Computadoras"
+        className="absolute inset-0 h-full w-full object-cover opacity-70"
+      />
+
+      {/* Capa oscura para legibilidad (Overlay) */}
+      <div className="absolute inset-0 bg-slate-950/60" />
+
+      {/* Contenido */}
+      <div className="container relative z-10 max-w-2xl text-center">
         <h1 className="font-display text-4xl font-bold">Computadoras</h1>
-        <p className="mt-4 text-lg text-background/70">Armado personalizado, reparaciones y mantenimiento de notebooks y PCs.</p>
+        <p className="mt-4 text-lg text-background/70">Reparaciones, armado de PC y mantenimientos completos.</p>
       </div>
     </section>
+
     <section className="py-16">
       <div className="container grid gap-6 md:grid-cols-2">
         {services.map((s) => (

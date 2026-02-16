@@ -19,12 +19,25 @@ const productos = [
 
 const Tienda = () => (
   <Layout>
-    <section className="bg-gradient-to-br from-foreground to-foreground/95 py-20 text-background">
-      <div className="container max-w-2xl text-center">
-        <h1 className="font-display text-4xl font-bold">Tienda de Accesorios</h1>
-        <p className="mt-4 text-lg text-background/70">Encontrá todo lo que necesitás para tus dispositivos.</p>
+    <section className="relative overflow-hidden py-24 text-white">
+
+      {/* Imagen de fondo */}
+      <img
+        src="/banner-tienda.png"
+        alt="Banner Tienda"
+        className="absolute inset-0 h-full w-full object-cover opacity-70"
+      />
+
+      {/* Capa oscura para legibilidad (Overlay) */}
+      <div className="absolute inset-0 bg-slate-950/60" />
+
+      {/* Contenido */}
+      <div className="container relative z-10 max-w-2xl text-center">
+        <h1 className="font-display text-4xl font-bold">Tienda Completa</h1>
+        <p className="mt-4 text-lg text-background/70">Encontrá tus dispositivos y todo lo que necesitás para ellos.</p>
       </div>
     </section>
+
     <section className="py-16">
       <div className="container grid grid-cols-2 gap-4 md:grid-cols-4">
         {productos.map((p) => (

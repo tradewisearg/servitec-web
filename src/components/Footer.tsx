@@ -8,18 +8,26 @@ const Footer = () => {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <span className="font-display text-lg font-bold text-primary-foreground">S</span>
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg">
+                <img
+                  src="/logo.png"
+                  alt="ServiTec Logo"
+                  className="h-full w-full object-contain"
+                />
               </div>
-              <span className="font-display text-xl font-bold">
-                Servi<span className="text-primary">tec</span>
+
+              {/* Texto ServiTec */}
+              <span className="font-display text-xl font-bold tracking-tight text-bold">
+                Servi<span className="text-primary">Tec</span>
               </span>
             </Link>
             <p className="text-sm leading-relaxed opacity-70">
               Servicio técnico especializado en reparación de dispositivos electrónicos con garantía escrita.
             </p>
           </div>
+
 
           {/* Links */}
           <div className="space-y-4">

@@ -12,10 +12,26 @@ const repairs = [
 
 const Celulares = () => (
   <Layout>
-    <section className="bg-gradient-to-br from-foreground to-foreground/95 py-20 text-background">
-      <div className="container max-w-2xl text-center">
-        <h1 className="font-display text-4xl font-bold">Celulares</h1>
-        <p className="mt-4 text-lg text-background/70">Reparamos todas las marcas y vendemos equipos nuevos sellados.</p>
+    <section className="relative overflow-hidden py-24 text-white">
+      
+      {/* Imagen de fondo */}
+      <img
+        src="/banner-celu.png"
+        alt="Banner Celulares"
+        className="absolute inset-0 h-full w-full object-cover opacity-70"
+      />
+
+      {/* Capa oscura para legibilidad (Overlay) */}
+      <div className="absolute inset-0 bg-slate-950/60" />
+
+      {/* Contenido */}
+      <div className="container relative z-10 max-w-2xl text-center">
+        <h1 className="font-display text-4xl font-extrabold md:text-5xl">
+          Celulares
+        </h1>
+        <p className="mt-4 text-lg text-slate-200">
+          Reparamos todas las marcas y vendemos equipos sellados.
+        </p>
       </div>
     </section>
     <section className="py-16">
