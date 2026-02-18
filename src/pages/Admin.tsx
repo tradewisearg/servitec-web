@@ -12,11 +12,25 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 import AdminLogin from "./AdminLogin";
 import { CATEGORIA } from "../lib/categoria";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 const Admin = () => {
-  const [isAuth, setIsAuth] = useState(
-    localStorage.getItem("admin-auth") === "true"
-  );
+  const [isAuth, setIsAuth] = useState(false);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuth(true);
+        fetchProductos();
+      } else {
+        setIsAuth(false);
+        setProductos([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
 
   const categorias = [
     "Auriculares",
@@ -45,14 +59,10 @@ const Admin = () => {
     setProductos(data.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   };
 
-  useEffect(() => {
-    if (isAuth) fetchProductos();
-  }, [isAuth]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("admin-auth");
-    setIsAuth(false);
+  const handleLogout = async () => {
+    await signOut(auth);
   };
+
 
   const handleImageChange = (e: any) => {
     const file = e.target.files[0];
@@ -99,21 +109,6 @@ const Admin = () => {
   };
 
   if (!isAuth) return <AdminLogin onLogin={() => setIsAuth(true)} />;
-
-  <select
-    value={filtro}
-    onChange={(e) => setFiltro(e.target.value)}
-    className="border p-2 rounded"
-  >
-    <option value="">Todas las categorías</option>
-
-    {CATEGORIA.map((cat) => (
-      <option key={cat} value={cat}>
-        {cat}
-      </option>
-    ))}
-  </select>
-
 
   const productosFiltrados = filtro
     ? productos.filter((p) => p.categoria === filtro)

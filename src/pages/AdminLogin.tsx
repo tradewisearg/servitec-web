@@ -1,51 +1,68 @@
 import { useState } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 interface Props {
   onLogin: () => void;
 }
 
 const AdminLogin = ({ onLogin }: Props) => {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = () => {
-    if (password === "1234") { // CAMBIÁ ESTO POR TU CONTRASEÑA
-      localStorage.setItem("admin-auth", "true");
+  const handleLogin = async (e: any) => {
+    e.preventDefault();
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       onLogin();
-    } else {
-      setError("Contraseña incorrecta");
+    } catch (err) {
+      setError("Credenciales incorrectas");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-zinc-900">
-      <div className="bg-white dark:bg-zinc-800 p-8 rounded-2xl shadow-xl w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Acceso Admin
+      <form
+        onSubmit={handleLogin}
+        className="bg-white dark:bg-zinc-800 p-8 rounded-2xl shadow w-80 space-y-4"
+      >
+        <h2 className="text-xl font-bold text-center">
+          Admin Login
         </h2>
 
         <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border p-2 rounded w-full"
+          required
+        />
+
+        <input
           type="password"
-          placeholder="Ingresar contraseña"
+          placeholder="Contraseña"
           value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setError("");
-          }}
-          className="w-full border p-2 rounded mb-2"
+          onChange={(e) => setPassword(e.target.value)}
+          className="border p-2 rounded w-full"
+          required
         />
 
         {error && (
-          <p className="text-red-500 text-sm mb-4">{error}</p>
+          <p className="text-red-500 text-sm text-center">
+            {error}
+          </p>
         )}
 
         <button
-          onClick={handleLogin}
-          className="w-full bg-primary text-white py-2 rounded-lg hover:scale-105 transition"
+          type="submit"
+          className="bg-primary text-white w-full py-2 rounded-lg"
         >
           Ingresar
         </button>
-      </div>
+      </form>
     </div>
   );
 };

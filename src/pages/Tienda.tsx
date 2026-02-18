@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { motion } from "framer-motion";
 
 interface Producto {
   id: string;
@@ -20,6 +21,8 @@ interface Producto {
 const Tienda = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
+  const [orden, setOrden] = useState("");
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -36,8 +39,27 @@ const Tienda = () => {
     fetchProductos();
   }, []);
 
-  // Agrupar por categoría
-  const categorias = [...new Set(productos.map((p) => p.categoria))];
+  // 🔎 Filtrado + búsqueda + orden
+  const productosFiltrados = useMemo(() => {
+    let lista = productos.filter((p) =>
+      p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    );
+
+    if (orden === "asc") {
+      lista.sort((a, b) => a.precio - b.precio);
+    }
+
+    if (orden === "desc") {
+      lista.sort((a, b) => b.precio - a.precio);
+    }
+
+    return lista;
+  }, [productos, busqueda, orden]);
+
+  // 📂 Agrupar por categoría dinámicamente
+  const categorias = [
+    ...new Set(productosFiltrados.map((p) => p.categoria)),
+  ];
 
   return (
     <Layout>
@@ -64,72 +86,117 @@ const Tienda = () => {
       <section className="py-20 bg-slate-50 dark:bg-zinc-900">
         <div className="container">
 
+          {/* CONTROLES */}
+          <div className="flex flex-col md:flex-row md:justify-between gap-6 mb-12">
+
+            {/* BUSCADOR */}
+            <input
+              type="text"
+              placeholder="Buscar producto..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="border p-3 rounded-xl w-full md:w-80 dark:bg-zinc-800"
+            />
+
+            {/* ORDEN */}
+            <select
+              value={orden}
+              onChange={(e) => setOrden(e.target.value)}
+              className="border p-3 rounded-xl dark:bg-zinc-800"
+            >
+              <option value="">Ordenar</option>
+              <option value="asc">Precio menor a mayor</option>
+              <option value="desc">Precio mayor a menor</option>
+            </select>
+          </div>
+
+          {/* LOADING SKELETON */}
           {loading && (
-            <p className="text-center text-muted-foreground">
-              Cargando productos...
-            </p>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-72 bg-gray-200 dark:bg-zinc-800 animate-pulse rounded-2xl"
+                />
+              ))}
+            </div>
           )}
 
           {!loading && categorias.length === 0 && (
             <p className="text-center text-muted-foreground">
-              No hay productos cargados.
+              No hay productos encontrados.
             </p>
           )}
 
-          {categorias.map((categoria) => (
-            <div key={categoria} className="mb-16">
-              <h2 className="text-2xl font-bold mb-8">
-                {categoria}
-              </h2>
+          {/* LISTADO POR CATEGORÍA */}
+          {!loading &&
+            categorias.map((categoria) => (
+              <div key={categoria} className="mb-16">
+                <h2 className="text-2xl font-bold mb-8">
+                  {categoria}
+                </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                {productos
-                  .filter((p) => p.categoria === categoria)
-                  .map((producto) => (
-                    <Card
-                      key={producto.id}
-                      className="group overflow-hidden hover:shadow-xl transition"
-                    >
-                      {producto.imagen && (
-                        <img
-                          src={producto.imagen}
-                          alt={producto.nombre}
-                          className="h-48 w-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                      )}
+                <motion.div
+                  layout
+                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+                >
+                  {productosFiltrados
+                    .filter((p) => p.categoria === categoria)
+                    .map((producto) => (
+                      <motion.div
+                        key={producto.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="group overflow-hidden hover:shadow-xl transition">
+                          {producto.imagen && (
+                            <img
+                              src={producto.imagen}
+                              alt={producto.nombre}
+                              className="h-48 w-full object-cover group-hover:scale-105 transition duration-300"
+                            />
+                          )}
 
-                      <CardContent className="p-6">
-                        <h3 className="font-semibold text-lg">
-                          {producto.nombre}
-                        </h3>
+                          <CardContent className="p-6">
+                            <h3 className="font-semibold text-lg">
+                              {producto.nombre}
+                            </h3>
 
-                        <p className="mt-2 font-bold text-primary">
-                          ${producto.precio.toLocaleString()}
-                        </p>
+                            <p className="mt-2 font-bold text-primary text-xl">
+                              ${producto.precio.toLocaleString()}
+                            </p>
 
-                        <p className="text-sm text-muted-foreground">
-                          Stock: {producto.stock}
-                        </p>
+                            <p className="text-sm text-muted-foreground">
+                              {producto.stock > 0
+                                ? "En stock"
+                                : "Sin stock"}
+                            </p>
 
-                        <Button
-                          asChild
-                          size="sm"
-                          className="mt-4 w-full bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90"
-                        >
-                          <a
-                            href={`https://wa.me/5491124873190?text=Hola,%20quiero%20consultar%20por%20${producto.nombre}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <MessageCircle size={16} /> Consultar
-                          </a>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+                            <Button
+                              asChild
+                              size="sm"
+                              className="mt-4 w-full bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90"
+                            >
+                              <a
+                                href={`https://wa.me/5491124873190?text=${encodeURIComponent(
+                                  `Hola, quiero consultar por ${producto.nombre}`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <MessageCircle size={16} className="mr-2" />
+                                Consultar
+                              </a>
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                </motion.div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </section>
     </Layout>
