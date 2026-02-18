@@ -1,67 +1,139 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Smartphone, Headphones, Keyboard, Mouse, Cable, Speaker,
-  Battery, MonitorSpeaker, MessageCircle,
-} from "lucide-react";
+import { MessageCircle } from "lucide-react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
-const productos = [
-  { icon: Smartphone, name: "Celulares Nuevos", cat: "Equipos" },
-  { icon: Headphones, name: "Auriculares", cat: "Accesorios" },
-  { icon: Keyboard, name: "Teclados", cat: "Periféricos" },
-  { icon: Mouse, name: "Mouse", cat: "Periféricos" },
-  { icon: Cable, name: "Cables y Cargadores", cat: "Accesorios" },
-  { icon: Speaker, name: "Parlantes", cat: "Audio" },
-  { icon: Battery, name: "Baterías", cat: "Repuestos" },
-  { icon: MonitorSpeaker, name: "Monitores", cat: "Equipos" },
-];
+interface Producto {
+  id: string;
+  nombre: string;
+  categoria: string;
+  imagen: string;
+  precio: number;
+  stock: number;
+}
 
-const Tienda = () => (
-  <Layout>
-    <section className="relative overflow-hidden py-24 text-white">
+const Tienda = () => {
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [loading, setLoading] = useState(true);
 
-      {/* Imagen de fondo */}
-      <img
-        src="/BAN-TN.png"
-        alt="Banner Tienda"
-        className="absolute inset-0 h-full w-full object-cover opacity-70"
-      />
+  useEffect(() => {
+    const fetchProductos = async () => {
+      const querySnapshot = await getDocs(collection(db, "stock"));
+      const items: Producto[] = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Producto[];
 
-      {/* Capa oscura para legibilidad (Overlay) */}
-      <div className="absolute inset-0 bg-slate-950/60" />
+      setProductos(items);
+      setLoading(false);
+    };
 
-      {/* Contenido */}
-      <div className="container relative z-10 max-w-2xl text-center">
-        <h1 className="font-display text-4xl font-bold">Tienda Completa</h1>
-        <p className="mt-4 text-lg text-background/70">Encontrá tus dispositivos y todo lo que necesitás para ellos.</p>
-      </div>
-    </section>
+    fetchProductos();
+  }, []);
 
-    <section className="py-16">
-      <div className="container grid grid-cols-2 gap-4 md:grid-cols-4">
-        {productos.map((p) => (
-          <Card key={p.name} className="text-center transition-shadow hover:shadow-lg">
-            <CardContent className="flex flex-col items-center p-6">
-              <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10">
-                <p.icon size={28} className="text-secondary" />
+  // Agrupar por categoría
+  const categorias = [...new Set(productos.map((p) => p.categoria))];
+
+  return (
+    <Layout>
+      {/* HERO */}
+      <section className="relative overflow-hidden py-24 text-white">
+        <img
+          src="/BAN-TN.png"
+          alt="Banner Tienda"
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
+        />
+        <div className="absolute inset-0 bg-slate-950/60" />
+
+        <div className="container relative z-10 max-w-2xl text-center">
+          <h1 className="font-display text-4xl font-bold">
+            Tienda Completa
+          </h1>
+          <p className="mt-4 text-lg text-background/70">
+            Stock actualizado en tiempo real.
+          </p>
+        </div>
+      </section>
+
+      {/* PRODUCTOS */}
+      <section className="py-20 bg-slate-50 dark:bg-zinc-900">
+        <div className="container">
+
+          {loading && (
+            <p className="text-center text-muted-foreground">
+              Cargando productos...
+            </p>
+          )}
+
+          {!loading && categorias.length === 0 && (
+            <p className="text-center text-muted-foreground">
+              No hay productos cargados.
+            </p>
+          )}
+
+          {categorias.map((categoria) => (
+            <div key={categoria} className="mb-16">
+              <h2 className="text-2xl font-bold mb-8">
+                {categoria}
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                {productos
+                  .filter((p) => p.categoria === categoria)
+                  .map((producto) => (
+                    <Card
+                      key={producto.id}
+                      className="group overflow-hidden hover:shadow-xl transition"
+                    >
+                      {producto.imagen && (
+                        <img
+                          src={producto.imagen}
+                          alt={producto.nombre}
+                          className="h-48 w-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                      )}
+
+                      <CardContent className="p-6">
+                        <h3 className="font-semibold text-lg">
+                          {producto.nombre}
+                        </h3>
+
+                        <p className="mt-2 font-bold text-primary">
+                          ${producto.precio.toLocaleString()}
+                        </p>
+
+                        <p className="text-sm text-muted-foreground">
+                          Stock: {producto.stock}
+                        </p>
+
+                        <Button
+                          asChild
+                          size="sm"
+                          className="mt-4 w-full bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90"
+                        >
+                          <a
+                            href={`https://wa.me/5491124873190?text=Hola,%20quiero%20consultar%20por%20${producto.nombre}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MessageCircle size={16} /> Consultar
+                          </a>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
-              <h3 className="font-display text-sm font-semibold">{p.name}</h3>
-              <span className="mt-1 text-xs text-muted-foreground">{p.cat}</span>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <div className="container mt-10 text-center">
-        <p className="mb-4 text-muted-foreground">Consultá disponibilidad y precios por WhatsApp</p>
-        <Button asChild className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90">
-          <a href="https://wa.me/5491124873190?text=Hola,%20quiero%20consultar%20por%20productos" target="_blank" rel="noopener noreferrer">
-            <MessageCircle size={18} /> Consultar disponibilidad
-          </a>
-        </Button>
-      </div>
-    </section>
-  </Layout>
-);
+            </div>
+          ))}
+        </div>
+      </section>
+    </Layout>
+  );
+};
 
 export default Tienda;
