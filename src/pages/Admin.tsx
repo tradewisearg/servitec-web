@@ -9,12 +9,23 @@ import {
   getDoc,
   query,
   orderBy,
-  limit
+  limit,
+  serverTimestamp
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, storage, auth } from "../lib/firebase";
 import AdminLogin from "./AdminLogin";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid
+} from "recharts";
+
 
 interface Producto {
   id: string;
@@ -45,8 +56,33 @@ const Admin = () => {
 
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [cantidadVenta, setCantidadVenta] = useState<Record<string, number>>({});
 
   /* ================= AUTH ================= */
+  
+   /* ================= FETCH ================= */
+
+  const fetchProductos = async () => {
+    const snap = await getDocs(collection(db, "stock"));
+    setProductos(
+      snap.docs.map((d) => ({ id: d.id, ...d.data() } as Producto))
+    );
+  };
+
+const fetchMovimientos = async () => {
+    const q = query(
+      collection(db, "movimientos"),
+      orderBy("fecha", "desc"),
+      limit(10)
+    );
+    const snap = await getDocs(q);
+    setMovimientos(snap.docs.map((d) => d.data()));
+  };
+
+  const fetchUsuarios = async () => {
+    const snap = await getDocs(collection(db, "users"));
+    setUsuarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -68,31 +104,6 @@ const Admin = () => {
     return () => unsub();
   }, []);
 
-  /* ================= FETCH ================= */
-
-  const fetchProductos = async () => {
-    const snap = await getDocs(collection(db, "stock"));
-    setProductos(
-      snap.docs.map((d) => ({ id: d.id, ...d.data() } as Producto))
-    );
-  };
-
-  const fetchMovimientos = async () => {
-    const q = query(
-      collection(db, "movimientos"),
-      orderBy("fecha", "desc"),
-      limit(10)
-    );
-    const snap = await getDocs(q);
-    setMovimientos(snap.docs.map((d) => d.data()));
-  };
-
-  const fetchUsuarios = async () => {
-    const snap = await getDocs(collection(db, "users"));
-    setUsuarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  };
-
-
   /* ================= MÉTRICAS ================= */
 
   const stockTotal = productos.reduce(
@@ -104,6 +115,29 @@ const Admin = () => {
     (acc, p) => acc + p.stock * p.precio,
     0
   );
+
+  /* ================= DATOS GRAFICO ================= */
+
+  const ventasPorProducto = movimientos
+    .filter((m) => m.tipo === "venta" || m.tipo === "salida")
+    .reduce((acc: any, curr: any) => {
+      const existente = acc.find(
+        (item: any) => item.producto === curr.producto
+      );
+
+      if (existente) {
+        existente.cantidad += curr.cantidad;
+        existente.total += curr.total || 0;
+      } else {
+        acc.push({
+          producto: curr.producto,
+          cantidad: curr.cantidad,
+          total: curr.total || 0
+        });
+      }
+
+      return acc;
+    }, []);
 
   /* ================= AGREGAR PRODUCTO ================= */
 
@@ -195,6 +229,46 @@ const Admin = () => {
     fetchMovimientos();
   };
 
+  const registrarVenta = async (producto: Producto) => {
+    if (role === "viewer") return;
+
+    const cantidad = cantidadVenta[producto.id] || 0;
+
+    if (cantidad <= 0) return;
+
+    if (cantidad > producto.stock) {
+      alert("No hay suficiente stock");
+      return;
+    }
+
+    const nuevoStock = producto.stock - cantidad;
+
+    try {
+      await updateDoc(doc(db, "stock", producto.id), {
+        stock: nuevoStock
+      });
+
+      await addDoc(collection(db, "movimientos"), {
+        producto: producto.nombre,
+        tipo: "venta",
+        cantidad,
+        precioUnitario: producto.precio,
+        total: producto.precio * cantidad,
+        usuario: auth.currentUser?.email,
+        fecha: serverTimestamp()
+      });
+
+      setCantidadVenta((prev) => ({
+        ...prev,
+        [producto.id]: 0
+      }));
+
+      fetchProductos();
+      fetchMovimientos();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
 
 
@@ -236,7 +310,6 @@ const Admin = () => {
     fetchProductos();
   };
 
-
   return (
     <div className="min-h-screen bg-slate-100 px-4 sm:px-8 py-10">
       <div className="max-w-7xl mx-auto space-y-12">
@@ -262,7 +335,32 @@ const Admin = () => {
           <Card title="Valor inventario" value={`$${valorInventario}`} />
           <Card title="Rol actual" value={role} />
         </div>
+        
+  {/* ================= GRAFICO VENTAS ================= */ }
 
+  <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+    <h2 className="text-xl font-semibold mb-6">
+      Ventas por producto
+    </h2>
+
+    {ventasPorProducto.length === 0 ? (
+      <p className="text-gray-500">
+        No hay ventas registradas todavía.
+      </p>
+    ) : (
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={ventasPorProducto}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="producto" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="cantidad" fill="#10b981" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    )}
+  </div>
 
         {/* FORMULARIO PROFESIONAL */}
         {role !== "viewer" && (
@@ -373,7 +471,6 @@ const Admin = () => {
                     </div>
                   )}
 
-
                   <div>
                     <h3 className="font-semibold text-lg">
                       {p.nombre}
@@ -448,6 +545,31 @@ const Admin = () => {
                       >
                         -
                       </button>
+
+                      {/* REGISTRAR VENTA */}
+                      <div className="flex gap-2 mt-2">
+                        <input
+                          type="number"
+                          min="1"
+                          value={cantidadVenta[p.id] || ""}
+                          onChange={(e) =>
+                            setCantidadVenta({
+                              ...cantidadVenta,
+                              [p.id]: Number(e.target.value)
+                            })
+                          }
+                          className="border p-2 rounded-lg w-full"
+                          placeholder="Cantidad vendida"
+                        />
+
+                        <button
+                          onClick={() => registrarVenta(p)}
+                          className="bg-emerald-600 text-white px-4 rounded-lg"
+                        >
+                          Vender
+                        </button>
+                      </div>
+
 
                       {role === "superadmin" && (
                         <button
