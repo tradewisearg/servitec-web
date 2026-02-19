@@ -10,7 +10,8 @@ import {
   limit,
   serverTimestamp,
   onSnapshot,
-  writeBatch
+  writeBatch,
+  where
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -33,6 +34,7 @@ interface Movimiento {
   producto: string;
   cantidad: number;
   total?: number;
+  precioUnitario?: number;
   fecha?: { toDate?: () => Date };
   usuario?: string;
 }
@@ -67,6 +69,7 @@ const Admin = () => {
   const [role, setRole] = useState<Role | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+  const [ventasHistoricas, setVentasHistoricas] = useState<Movimiento[]>([]);
   const [visibleProductos, setVisibleProductos] = useState(INVENTARIO_PAGE_SIZE);
   const [visibleMovimientos, setVisibleMovimientos] = useState(HISTORIAL_PAGE_SIZE);
 
@@ -94,18 +97,22 @@ const Admin = () => {
   useEffect(() => {
     let unsubStock: (() => void) | undefined;
     let unsubMovimientos: (() => void) | undefined;
+    let unsubVentas: (() => void) | undefined;
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       unsubStock?.();
       unsubMovimientos?.();
+      unsubVentas?.();
       unsubStock = undefined;
       unsubMovimientos = undefined;
+      unsubVentas = undefined;
 
       if (!user) {
         setIsAuth(false);
         setRole(null);
         setProductos([]);
         setMovimientos([]);
+        setVentasHistoricas([]);
         return;
       }
 
@@ -126,11 +133,17 @@ const Admin = () => {
       unsubMovimientos = onSnapshot(movimientosQuery, (movSnap) => {
         setMovimientos(movSnap.docs.map((d) => d.data() as Movimiento));
       });
+
+      const ventasQuery = query(collection(db, "movimientos"), where("tipo", "==", "venta"));
+      unsubVentas = onSnapshot(ventasQuery, (ventasSnap) => {
+        setVentasHistoricas(ventasSnap.docs.map((d) => d.data() as Movimiento));
+      });
     });
 
     return () => {
       unsubStock?.();
       unsubMovimientos?.();
+      unsubVentas?.();
       unsubAuth();
     };
   }, []);
@@ -295,7 +308,7 @@ const Admin = () => {
     return productos.reduce(
       (acc, p) => {
         acc.stockTotal += p.stock;
-        acc.valorInventario += p.stock * p.precio;
+        acc.valorInventario += p.stock * p.precioCosto;
         return acc;
       },
       { stockTotal: 0, valorInventario: 0 }
@@ -305,6 +318,68 @@ const Admin = () => {
   const productosPorNombre = useMemo(() => {
     return new Map(productos.map((p) => [p.nombre, p]));
   }, [productos]);
+
+  const financialData = useMemo(() => {
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hace30Dias.getDate() - 30);
+
+    const acumuladoVentas = new Map<string, { cantidad: number; ganancia: number }>();
+    const ventasUltimos30 = new Set<string>();
+    let totalGananciaHistorica = 0;
+    let totalCostoHistorico = 0;
+    let gananciaUltimos30Dias = 0;
+
+    for (const venta of ventasHistoricas) {
+      const producto = productosPorNombre.get(venta.producto);
+      const costoUnitario = producto?.precioCosto ?? 0;
+      const costoTotal = costoUnitario * venta.cantidad;
+      const ingreso = venta.total ?? (venta.precioUnitario ?? producto?.precio ?? 0) * venta.cantidad;
+      const ganancia = ingreso - costoTotal;
+
+      totalGananciaHistorica += ganancia;
+      totalCostoHistorico += costoTotal;
+
+      const registro = acumuladoVentas.get(venta.producto) || { cantidad: 0, ganancia: 0 };
+      registro.cantidad += venta.cantidad || 0;
+      registro.ganancia += ganancia;
+      acumuladoVentas.set(venta.producto, registro);
+
+      if (venta.fecha?.toDate && venta.fecha.toDate() >= hace30Dias) {
+        gananciaUltimos30Dias += ganancia;
+        ventasUltimos30.add(venta.producto);
+      }
+    }
+
+    let productoMasRentable = "-";
+    let productoMasVendido = "-";
+    let maxGanancia = Number.NEGATIVE_INFINITY;
+    let maxCantidad = Number.NEGATIVE_INFINITY;
+
+    acumuladoVentas.forEach((valor, producto) => {
+      if (valor.ganancia > maxGanancia) {
+        maxGanancia = valor.ganancia;
+        productoMasRentable = producto;
+      }
+      if (valor.cantidad > maxCantidad) {
+        maxCantidad = valor.cantidad;
+        productoMasVendido = producto;
+      }
+    });
+
+    const margenPromedio = totalCostoHistorico > 0
+      ? (totalGananciaHistorica / totalCostoHistorico) * 100
+      : 0;
+
+    return {
+      totalGananciaHistorica,
+      gananciaUltimos30Dias,
+      margenPromedio,
+      productoMasRentable,
+      productoMasVendido,
+      totalCostoHistorico,
+      ventasUltimos30
+    };
+  }, [productosPorNombre, ventasHistoricas]);
 
   const resumen30Dias = useMemo(() => {
     const desde = new Date();
@@ -328,10 +403,53 @@ const Admin = () => {
 
   const dataPie = useMemo(
     () => [
-      { name: "Ganancia", value: resumen30Dias.ganancia },
-      { name: "Costo", value: resumen30Dias.costo }
+      { name: "Ganancia", value: Math.max(0, financialData.totalGananciaHistorica) },
+      { name: "Costo", value: Math.max(0, financialData.totalCostoHistorico) }
     ],
-    [resumen30Dias.costo, resumen30Dias.ganancia]
+    [financialData.totalCostoHistorico, financialData.totalGananciaHistorica]
+  );
+
+  const alertasProductos = useMemo(() => {
+    return productos.map((p) => {
+      const margen = p.precioCosto > 0 ? ((p.precio - p.precioCosto) / p.precioCosto) * 100 : 0;
+      return {
+        ...p,
+        margen,
+        stockBajo: p.stock < 5,
+        sinVentas30Dias: !financialData.ventasUltimos30.has(p.nombre),
+        margenBajo: margen < 10
+      };
+    });
+  }, [financialData.ventasUltimos30, productos]);
+
+  const productosConAlertas = useMemo(
+    () => alertasProductos.filter((p) => p.stockBajo || p.sinVentas30Dias || p.margenBajo),
+    [alertasProductos]
+  );
+
+  const alertasPorProductoId = useMemo(
+    () =>
+      new Map(
+        alertasProductos.map((p) => [
+          p.id,
+          {
+            stockBajo: p.stockBajo,
+            sinVentas30Dias: p.sinVentas30Dias,
+            margenBajo: p.margenBajo
+          }
+        ])
+      ),
+    [alertasProductos]
+  );
+
+  const currency = useMemo(
+    () =>
+      new Intl.NumberFormat("es-AR", {
+        style: "currency",
+        currency: "ARS",
+        maximumFractionDigits: 0
+      }),
+    []
   );
 
   const productosVisibles = useMemo(
@@ -360,135 +478,205 @@ const Admin = () => {
         </div>
 
         <motion.div
-          className="grid grid-cols-2 gap-4 md:grid-cols-4 sm:gap-6"
+          className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 sm:gap-6"
           initial="hidden"
           animate="show"
           variants={{ show: { transition: { staggerChildren: 0.08 } } }}
         >
           <Card title="Stock total" value={metrics.stockTotal} />
-          <Card title="Valor inventario" value={`$${metrics.valorInventario}`} />
+          <Card title="Valor inventario" value={currency.format(metrics.valorInventario)} />
           <Card title="Rol actual" value={role} />
+          <Card title="Ganancia historica" value={currency.format(financialData.totalGananciaHistorica)} />
+          <Card title="Ganancia ultimos 30 dias" value={currency.format(financialData.gananciaUltimos30Dias)} />
+          <Card title="Margen promedio" value={`${financialData.margenPromedio.toFixed(1)}%`} />
+          <Card title="Producto mas rentable" value={financialData.productoMasRentable} />
+          <Card title="Producto mas vendido" value={financialData.productoMasVendido} />
         </motion.div>
 
-        <motion.section
-          className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={blockAnimation}
-        >
-          <h2 className="mb-8 text-xl font-semibold">Resumen financiero ultimos 30 dias</h2>
-          <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="rounded-xl border bg-slate-50 p-6">
-              <p className="text-sm text-gray-500">Ingresos</p>
-              <h3 className="text-2xl font-bold text-emerald-600">
-                ${resumen30Dias.ganancia + resumen30Dias.costo}
-              </h3>
-            </div>
-            <div className="rounded-xl border bg-slate-50 p-6">
-              <p className="text-sm text-gray-500">Costo</p>
-              <h3 className="text-2xl font-bold text-red-500">${resumen30Dias.costo}</h3>
-            </div>
-            <div className="rounded-xl border bg-slate-50 p-6">
-              <p className="text-sm text-gray-500">Ganancia</p>
-              <h3 className="text-2xl font-bold text-emerald-700">${resumen30Dias.ganancia}</h3>
-            </div>
-          </div>
-
-          {resumen30Dias.costo === 0 && resumen30Dias.ganancia === 0 ? (
-            <p className="text-gray-500">No hay datos suficientes en los ultimos 30 dias.</p>
-          ) : (
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={dataPie} dataKey="value" nameKey="name" outerRadius={150} label>
-                    {dataPie.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </motion.section>
-
-        {role !== "viewer" && (
+        <div className="grid items-start gap-6 xl:grid-cols-12">
           <motion.section
-            className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-7"
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.2 }}
             variants={blockAnimation}
           >
-            <h2 className="mb-6 text-xl font-semibold">Agregar nuevo producto</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <input
-                  placeholder="Nombre del producto"
-                  value={form.nombre}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))}
-                  className="w-full rounded-lg border p-3"
-                  required
-                />
-                <select
-                  value={form.categoria}
-                  onChange={(e) => setForm((prev) => ({ ...prev, categoria: e.target.value }))}
-                  required
-                  className="w-full rounded-lg border p-3"
-                >
-                  <option value="">Seleccionar categoria</option>
-                  {CATEGORIA.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Costo de proveedor"
-                  value={form.precioCosto}
-                  onChange={(e) => setForm((prev) => ({ ...prev, precioCosto: e.target.value }))}
-                  className="w-full rounded-lg border p-3"
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="Precio Cliente"
-                  value={form.precio}
-                  onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))}
-                  className="w-full rounded-lg border p-3"
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="Stock a anadir"
-                  value={form.stock}
-                  onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
-                  className="w-full rounded-lg border p-3"
-                  required
-                />
+            <h2 className="mb-6 text-xl font-semibold">Dashboard financiero</h2>
+            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-xl border bg-slate-50 p-4">
+                <p className="text-sm text-gray-500">Ingresos</p>
+                <h3 className="text-xl font-bold text-emerald-600">
+                  {currency.format(resumen30Dias.ganancia + resumen30Dias.costo)}
+                </h3>
               </div>
+              <div className="rounded-xl border bg-slate-50 p-4">
+                <p className="text-sm text-gray-500">Costo</p>
+                <h3 className="text-xl font-bold text-red-500">{currency.format(resumen30Dias.costo)}</h3>
+              </div>
+              <div className="rounded-xl border bg-slate-50 p-4">
+                <p className="text-sm text-gray-500">Ganancia</p>
+                <h3 className="text-xl font-bold text-emerald-700">{currency.format(resumen30Dias.ganancia)}</h3>
+              </div>
+            </div>
 
-              <input type="file" onChange={handleImageChange} />
-              {preview && (
-                <img
-                  src={preview}
-                  className="h-28 rounded-lg object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
-
-              <button type="submit" className="rounded-lg bg-black px-6 py-3 text-white">
-                Guardar producto
-              </button>
-              <p className="text-sm text-green-600">
-                Ganancia estimada: ${marginData.margen} ({marginData.porcentaje}%)
-              </p>
-            </form>
+            {financialData.totalCostoHistorico === 0 && financialData.totalGananciaHistorica === 0 ? (
+              <p className="text-gray-500">No hay datos suficientes para el grafico.</p>
+            ) : (
+              <div className="relative h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={dataPie}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius={125}
+                      innerRadius={85}
+                      paddingAngle={4}
+                      isAnimationActive
+                      animationDuration={800}
+                    >
+                      {dataPie.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Ganancia total
+                  </p>
+                  <p className="text-xl font-bold text-emerald-700">
+                    {currency.format(financialData.totalGananciaHistorica)}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    Margen {financialData.margenPromedio.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            )}
           </motion.section>
-        )}
+
+          <div className="space-y-6 xl:col-span-5">
+            <motion.section
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.2 }}
+              variants={blockAnimation}
+            >
+              <h2 className="mb-4 text-xl font-semibold">Alertas inteligentes</h2>
+              {productosConAlertas.length === 0 ? (
+                <p className="text-sm text-emerald-700">No hay alertas criticas por ahora.</p>
+              ) : (
+                <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                  {productosConAlertas.map((producto) => (
+                    <div
+                      key={producto.id}
+                      className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm"
+                    >
+                      <p className="font-semibold text-slate-800">{producto.nombre}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {producto.stockBajo && (
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
+                            Stock menor a 5
+                          </span>
+                        )}
+                        {producto.sinVentas30Dias && (
+                          <span className="rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-700">
+                            Sin ventas en 30 dias
+                          </span>
+                        )}
+                        {producto.margenBajo && (
+                          <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">
+                            Margen menor al 10%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.section>
+
+            {role !== "viewer" && (
+              <motion.section
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.2 }}
+                variants={blockAnimation}
+              >
+                <h2 className="mb-4 text-xl font-semibold">Agregar nuevo producto</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <input
+                      placeholder="Nombre del producto"
+                      value={form.nombre}
+                      onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))}
+                      className="w-full rounded-lg border p-3"
+                      required
+                    />
+                    <select
+                      value={form.categoria}
+                      onChange={(e) => setForm((prev) => ({ ...prev, categoria: e.target.value }))}
+                      required
+                      className="w-full rounded-lg border p-3"
+                    >
+                      <option value="">Seleccionar categoria</option>
+                      {CATEGORIA.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Costo de proveedor"
+                      value={form.precioCosto}
+                      onChange={(e) => setForm((prev) => ({ ...prev, precioCosto: e.target.value }))}
+                      className="w-full rounded-lg border p-3"
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="Precio Cliente"
+                      value={form.precio}
+                      onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))}
+                      className="w-full rounded-lg border p-3"
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="Stock a anadir"
+                      value={form.stock}
+                      onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
+                      className="w-full rounded-lg border p-3 md:col-span-2"
+                      required
+                    />
+                  </div>
+
+                  <input type="file" onChange={handleImageChange} />
+                  {preview && (
+                    <img
+                      src={preview}
+                      className="h-24 rounded-lg object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+
+                  <button type="submit" className="rounded-lg bg-black px-5 py-2 text-white">
+                    Guardar producto
+                  </button>
+                  <p className="text-sm text-green-600">
+                    Ganancia estimada: ${marginData.margen} ({marginData.porcentaje}%)
+                  </p>
+                </form>
+              </motion.section>
+            )}
+          </div>
+        </div>
 
         <motion.section
           className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
@@ -513,6 +701,7 @@ const Admin = () => {
                 producto={p}
                 role={role}
                 cantidad={cantidadVenta[p.id] || 0}
+                alertas={alertasPorProductoId.get(p.id)}
                 onCantidadChange={handleCantidadChange}
                 onRegistrarVenta={registrarVenta}
                 onAbrirEditor={abrirEditor}
@@ -673,6 +862,7 @@ const ProductoRow = memo(
     producto,
     role,
     cantidad,
+    alertas,
     onCantidadChange,
     onRegistrarVenta,
     onAbrirEditor
@@ -680,6 +870,11 @@ const ProductoRow = memo(
     producto: Producto;
     role: Role | null;
     cantidad: number;
+    alertas?: {
+      stockBajo: boolean;
+      sinVentas30Dias: boolean;
+      margenBajo: boolean;
+    };
     onCantidadChange: (id: string, value: number) => void;
     onRegistrarVenta: (producto: Producto, cantidad: number) => Promise<void>;
     onAbrirEditor: (producto: Producto) => void;
@@ -695,7 +890,24 @@ const ProductoRow = memo(
           />
         )}
         <div>
-          <h3 className="text-lg font-semibold">{producto.nombre}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold">{producto.nombre}</h3>
+            {alertas?.stockBajo && (
+              <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
+                Stock bajo
+              </span>
+            )}
+            {alertas?.sinVentas30Dias && (
+              <span className="rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-700">
+                Sin ventas 30d
+              </span>
+            )}
+            {alertas?.margenBajo && (
+              <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">
+                Margen &lt; 10%
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500">Categoria: {producto.categoria}</p>
           <p className="text-sm">
             Stock: <b>{producto.stock}</b>
