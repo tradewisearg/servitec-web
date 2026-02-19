@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   collection,
@@ -737,7 +737,7 @@ const ProductoRow = memo(
   )
 );
 
-const Card = memo(({ title, value }: { title: string; value: any }) => (
+const Card = memo(({ title, value }: { title: string; value: ReactNode }) => (
   <motion.div
     variants={blockAnimation}
     className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
