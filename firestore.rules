@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Public storefront: clients can only read stock data.
+    match /stock/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Internal logs/sales history: only admins.
+    match /movimientos/{movId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Daily finance snapshots for reporting/calendar views: admins only.
+    match /resumen_financiero_diario/{dayId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // User roles: admin can manage all, authenticated users can read their own profile.
+    match /users/{userId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

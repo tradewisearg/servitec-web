@@ -76,21 +76,25 @@ const Tienda = () => {
         </div>
       </section>
 
-      <section className="bg-slate-50 py-20 dark:bg-zinc-900">
+      <section className="bg-gradient-to-b from-slate-100 via-slate-100 to-slate-200 py-20 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
         <div className="container">
-          <div className="mb-12 flex flex-col gap-6 md:flex-row md:justify-between">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 p-5 shadow-2xl sm:p-8 dark:border-zinc-700 dark:bg-zinc-900/90">
+            <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-cyan-200/50 blur-3xl dark:bg-cyan-500/10" />
+            <div className="pointer-events-none absolute -left-20 bottom-0 h-56 w-56 rounded-full bg-emerald-200/50 blur-3xl dark:bg-emerald-500/10" />
+
+            <div className="mb-12 flex flex-col gap-6 md:flex-row md:justify-between">
             <input
               type="text"
               placeholder="Buscar producto..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full rounded-xl border p-3 dark:bg-zinc-800 md:w-80"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 md:w-80"
             />
 
             <select
               value={orden}
               onChange={(e) => setOrden(e.target.value)}
-              className="rounded-xl border p-3 dark:bg-zinc-800"
+              className="rounded-xl border border-slate-300 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800"
             >
               <option value="">Ordenar</option>
               <option value="asc">Precio menor a mayor</option>
@@ -116,7 +120,9 @@ const Tienda = () => {
           {!loading &&
             categorias.map((categoria) => (
               <div key={categoria} className="mb-16">
-                <h2 className="mb-8 text-2xl font-bold">{categoria}</h2>
+                <h2 className="mb-8 inline-flex rounded-full border border-slate-300 bg-slate-100 px-4 py-1.5 text-xl font-bold text-slate-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
+                  {categoria}
+                </h2>
 
                 <motion.div
                   layout
@@ -132,7 +138,7 @@ const Tienda = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <Card className="group overflow-hidden transition hover:shadow-xl">
+                        <Card className="group overflow-hidden border-slate-200 bg-white/90 transition hover:-translate-y-1 hover:shadow-xl dark:border-zinc-700 dark:bg-zinc-900/90">
                           {producto.imagen && (
                             <img
                               src={producto.imagen}
@@ -177,6 +183,7 @@ const Tienda = () => {
                 </motion.div>
               </div>
             ))}
+          </div>
         </div>
       </section>
     </Layout>
