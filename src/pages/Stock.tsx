@@ -93,7 +93,7 @@ const Stock = () => {
           border border-red-500 text-red-400 
           shadow-[0_0_10px_rgba(239,68,68,0.4)] whitespace-nowrap"
                       >
-                        💳 3 Cuotas
+                        💳 3 Cuotas sin interés
                       </span>
                     </div>
 
