@@ -78,7 +78,7 @@ const Index = () => {
       <section className="relative overflow-hidden bg-gradient-to-br from-foreground via-foreground to-secondary/30 py-20 text-background md:py-32">
         <img
           src="/BAN-IN.png"
-          alt="Banner principal de ServiTec"
+          alt="Descripción"
           className="absolute inset-0 h-full w-full object-cover opacity-30"
           loading="eager"
           decoding="async"
@@ -182,14 +182,14 @@ const Index = () => {
         />
         <img
           src="/Local2.png"
-          alt="Mostrador de atencion de ServiTec"
+          alt="Mostrador de atención de ServiTec"
           className="rounded-2xl object-cover w-full h-32 sm:h-40 md:h-48 hover:scale-105 transition"
           loading="lazy"
           decoding="async"
         />
         <img
           src="/Local3.png"
-          alt="Espacio de trabajo tecnico en ServiTec"
+          alt="Espacio de trabajo técnico en ServiTec"
           className="rounded-2xl object-cover w-full h-32 sm:h-40 md:h-48 hover:scale-105 transition"
           loading="lazy"
           decoding="async"
@@ -228,7 +228,7 @@ const Index = () => {
             style={{ border: 0 }}
             allowFullScreen
             loading="lazy"
-            title="Mapa de ubicacion de ServiTec"
+            title="Mapa de ubicación de ServiTec"
             referrerPolicy="no-referrer-when-downgrade"
           />
         </div>
