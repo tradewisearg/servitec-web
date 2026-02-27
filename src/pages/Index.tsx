@@ -1,4 +1,4 @@
-import Layout from "@/components/Layout";
+﻿import Layout from "@/components/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import {
 
 const categories = [
   {
-    title: "Móviles y TV",
+    title: "MÃ³viles y TV",
     icon: Smartphone,
     color: "text-red-500",
     bg: "bg-red-500/10",
@@ -30,7 +30,7 @@ const categories = [
     ],
   },
   {
-    title: "Computación",
+    title: "ComputaciÃ³n",
     icon: Laptop,
     color: "text-indigo-500",
     bg: "bg-indigo-500/10",
@@ -47,7 +47,7 @@ const categories = [
     bg: "bg-purple-500/10",
     items: [
       "Consolas de Videojuegos",
-      "Pequeños electrodomésticos",
+      "PequeÃ±os electrodomÃ©sticos",
       "Hogar Inteligente",
     ],
   },
@@ -57,12 +57,12 @@ const products = [
   {
     name: "Celulares Nuevos Sellados",
     icon: Smartphone,
-    desc: "Las mejores marcas con garantía oficial",
+    desc: "Las mejores marcas con garantÃ­a oficial",
   },
   {
     name: "Accesorios",
     icon: ShoppingBag,
-    desc: "Cables, teclados, mouse y más",
+    desc: "Cables, teclados, mouse y mÃ¡s",
   },
   {
     name: "PC Armadas a Medida",
@@ -75,23 +75,26 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-foreground via-foreground to-secondary/30 py-24 text-background md:py-32">
+      <section className="relative overflow-hidden bg-gradient-to-br from-foreground via-foreground to-secondary/30 py-20 text-background md:py-32">
         <img
           src="/BAN-IN.png"
-          alt="Descripción"
+          alt="Banner principal de ServiTec"
           className="absolute inset-0 h-full w-full object-cover opacity-30"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
         />
         <div className="container relative z-10 max-w-3xl text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-background/20 px-4 py-1.5 text-sm text-background/80">
-            <Shield size={14} /> Garantía de 2 meses en todas las reparaciones
+            <Shield size={14} /> GarantÃ­a de 2 meses en todas las reparaciones
           </div>
-          <h1 className="font-display text-4xl font-bold leading-tight tracking-tight md:text-6xl">
+          <h1 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:text-6xl">
             Expertos en darle vida a tus{" "}
             <span className="text-primary">dispositivos</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-background/70">
-            Servicio técnico especializado en Saavedra con garantía escrita.
-            Reparamos celulares, notebooks, consolas y más.
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-background/70 sm:text-lg">
+            Servicio tÃ©cnico especializado en Saavedra con garantÃ­a escrita.
+            Reparamos celulares, notebooks, consolas y mÃ¡s.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Button size="lg" variant="secondary" asChild>
@@ -120,13 +123,13 @@ const Index = () => {
 <section className="bg-slate-50 dark:bg-slate-900/50 py-20 md:py-28">
   <div className="container px-4 mx-auto">
 
-    {/* Título */}
+    {/* TÃ­tulo */}
     <div className="max-w-3xl mx-auto text-center mb-16 md:mb-20">
       <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
-        Conocé <span className="text-primary">ServiTec</span>
+        ConocÃ© <span className="text-primary">ServiTec</span>
       </h2>
       <p className="mt-4 text-base sm:text-lg text-muted-foreground">
-        Transparencia, profesionalismo y atención personalizada en cada servicio.
+        Transparencia, profesionalismo y atenciÃ³n personalizada en cada servicio.
       </p>
     </div>
 
@@ -137,10 +140,10 @@ const Index = () => {
       <div className="space-y-6 text-sm sm:text-base">
         <div>
           <h3 className="font-display text-xl sm:text-2xl font-bold mb-3">
-            ¿Quiénes somos?
+            Â¿QuiÃ©nes somos?
           </h3>
           <p className="text-muted-foreground leading-relaxed">
-            Somos un servicio técnico especializado en reparación de celulares,
+            Somos un servicio tÃ©cnico especializado en reparaciÃ³n de celulares,
             consolas y computadoras. Trabajamos con herramientas profesionales,
             repuestos de calidad y personal capacitado para garantizar resultados confiables.
           </p>
@@ -148,43 +151,55 @@ const Index = () => {
 
         <div>
           <h3 className="font-display text-xl sm:text-2xl font-bold mb-3">
-            ¿Qué hacemos?
+            Â¿QuÃ© hacemos?
           </h3>
 
           <p className="text-muted-foreground leading-relaxed">
             En ServiTec trabajamos para que sus dispositivos recuperen plenamente su funcionalidad,
-            extendiendo su vida útil y devolviéndolos al servicio de sus necesidades diarias.
+            extendiendo su vida Ãºtil y devolviÃ©ndolos al servicio de sus necesidades diarias.
           </p>
 
           <p className="text-muted-foreground leading-relaxed">
-            Muchas veces creemos que la inversión no justifica reparar un equipo,
-            pero en la mayoría de los casos existen soluciones técnicas viables.
+            Muchas veces creemos que la inversiÃ³n no justifica reparar un equipo,
+            pero en la mayorÃ­a de los casos existen soluciones tÃ©cnicas viables.
           </p>
 
           <p className="text-muted-foreground leading-relaxed">
-            Contamos con capacitación profesional, herramientas adecuadas y experiencia
-            para ofrecer diagnósticos precisos y reparaciones confiables.
+            Contamos con capacitaciÃ³n profesional, herramientas adecuadas y experiencia
+            para ofrecer diagnÃ³sticos precisos y reparaciones confiables.
           </p>
         </div>
       </div>
 
-      {/* Galería Responsive */}
+      {/* GalerÃ­a Responsive */}
       <div className="grid grid-cols-2 gap-4">
         <img
           src="/Local1.png"
+          alt="Interior del local ServiTec"
           className="rounded-2xl object-cover w-full h-32 sm:h-40 md:h-48 hover:scale-105 transition"
+          loading="lazy"
+          decoding="async"
         />
         <img
           src="/Local2.png"
+          alt="Mostrador de atencion de ServiTec"
           className="rounded-2xl object-cover w-full h-32 sm:h-40 md:h-48 hover:scale-105 transition"
+          loading="lazy"
+          decoding="async"
         />
         <img
           src="/Local3.png"
+          alt="Espacio de trabajo tecnico en ServiTec"
           className="rounded-2xl object-cover w-full h-32 sm:h-40 md:h-48 hover:scale-105 transition"
+          loading="lazy"
+          decoding="async"
         />
         <img
           src="/Local4.png"
+          alt="Vista general del local ServiTec"
           className="rounded-2xl object-cover w-full h-32 sm:h-40 md:h-48 hover:scale-105 transition"
+          loading="lazy"
+          decoding="async"
         />
       </div>
 
@@ -192,27 +207,29 @@ const Index = () => {
   </div>
 </section>
 
-{/* ================= UBICACIÓN ================= */}
+{/* ================= UBICACIÃ“N ================= */}
 <section className="bg-slate-50 dark:bg-zinc-900 py-16 md:py-24">
   <div className="container mx-auto px-4">
 
     <div className="grid gap-12 lg:gap-16 lg:grid-cols-2 items-start">
 
-      {/* ===== UBICACIÓN ===== */}
+      {/* ===== UBICACIÃ“N ===== */}
       <div className="space-y-6">
         <div>
           <h3 className="font-display text-2xl md:text-3xl font-bold">
-            ¿Dónde nos ubicamos?
+            Â¿DÃ³nde nos ubicamos?
           </h3>
         </div>
 
         <div className="overflow-hidden rounded-2xl shadow-xl w-full h-[320px] sm:h-[380px] md:h-[420px]">
           <iframe
-            src="https://www.google.com/maps?q=Av.+García+del+Río+4001,+Saavedra,+CABA&output=embed"
+            src="https://www.google.com/maps?q=Av.+GarcÃ­a+del+RÃ­o+4001,+Saavedra,+CABA&output=embed"
             className="w-full h-full"
             style={{ border: 0 }}
             allowFullScreen
             loading="lazy"
+            title="Mapa de ubicacion de ServiTec"
+            referrerPolicy="no-referrer-when-downgrade"
           />
         </div>
       </div>
@@ -220,35 +237,35 @@ const Index = () => {
       {/* ===== HORARIOS ===== */}
       <div className="space-y-6">
         <h3 className="font-display text-2xl md:text-3xl font-bold">
-          Horarios de Atención
+          Horarios de AtenciÃ³n
         </h3>
 
         <div className="bg-white dark:bg-zinc-800 p-6 md:p-8 rounded-2xl shadow-xl">
 
           <div className="space-y-6 text-sm sm:text-base font-medium">
 
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span>Lunes a Viernes</span>
               <span className="text-green-500 font-semibold">
                 10:00 - 19:00
               </span>
             </div>
 
-            <div className="flex justify-between">
-              <span>Sábados</span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>SÃ¡bados</span>
               <span className="text-green-500 font-semibold">
                 10:00 - 14:00
               </span>
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span>Domingos</span>
               <span className="text-red-500 font-semibold">
                 Cerrado
               </span>
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span>Feriados</span>
               <span className="text-orange-500 font-semibold">
                 Consultar
@@ -273,7 +290,7 @@ const Index = () => {
               Nuestros Servicios Profesionales
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Cubrimos todas las categorías en reparación de dispositivos
+              Cubrimos todas las categorÃ­as en reparaciÃ³n de dispositivos
             </p>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
@@ -319,18 +336,18 @@ const Index = () => {
               <div className="relative z-10 flex flex-col gap-4">
                 <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-4 py-1.5 text-sm font-medium text-primary shadow-sm w-fit">
                   <Sparkles size={16} className="animate-pulse" />
-                  Soporte Técnico de Alta Gama
+                  Soporte TÃ©cnico de Alta Gama
                 </div>
 
                 <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
-                  ¿Tu equipo calienta o <br className="hidden sm:block" />
+                  Â¿Tu equipo calienta o <br className="hidden sm:block" />
                   <span className="text-primary">funciona lento?</span>
                 </h2>
 
                 <p className="max-w-lg text-base sm:text-lg text-slate-300">
                   No esperes a que sea tarde. Nuestra{" "}
                   <strong>Mantenimiento & Limpieza Premium</strong> recupera la
-                  vida útil de tus dispositivos.
+                  vida Ãºtil de tus dispositivos.
                 </p>
 
                 <div className="mt-2 flex flex-wrap gap-2 sm:gap-3">
@@ -345,7 +362,7 @@ const Index = () => {
                       key={item}
                       className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs font-medium text-slate-400"
                     >
-                      • {item}
+                      â€¢ {item}
                     </span>
                   ))}
                 </div>
@@ -362,13 +379,13 @@ const Index = () => {
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2"
                     >
-                      ¡Quiero mi service ahora! <ArrowRight size={20} />
+                      Â¡Quiero mi service ahora! <ArrowRight size={20} />
                     </a>
                   </Button>
                 </div>
 
                 <p className="text-xs text-slate-500 mt-2">
-                  ✅ Presupuesto sin cargo • ⚡ Entrega en 24/48hs
+                  âœ… Presupuesto sin cargo â€¢ âš¡ Entrega en 24/48hs
                 </p>
               </div>
             </div>
@@ -381,6 +398,8 @@ const Index = () => {
                   src="/PIC-GRID1.png"
                   alt="Mantenimiento PS3/PS4 XBOX"
                   className="h-full w-full object-cover hover:scale-105 transition duration-500"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
 
@@ -390,6 +409,8 @@ const Index = () => {
                   src="/PIC-GRID2.png"
                   alt="Mantenimiento PS5/XBOX"
                   className="h-full w-full object-cover hover:scale-105 transition duration-500"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
 
@@ -399,6 +420,8 @@ const Index = () => {
                   src="/PIC-GRID3.png"
                   alt="Mantenimiento PC"
                   className="h-full w-full object-cover hover:scale-105 transition duration-500"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>
@@ -415,7 +438,7 @@ const Index = () => {
             {/* Header */}
             <div className="mb-8 sm:mb-10 text-center">
               <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold">
-                Pedí tu Presupuesto
+                PedÃ­ tu Presupuesto
               </h2>
               <p className="mt-3 text-sm sm:text-base text-muted-foreground">
                 Contanos sobre tu dispositivo y te respondemos a la brevedad
@@ -451,7 +474,7 @@ const Index = () => {
 
               <Textarea
                 name="problema"
-                placeholder="Describí brevemente el problema"
+                placeholder="DescribÃ­ brevemente el problema"
                 rows={4}
                 required
                 className="w-full resize-none"
@@ -474,3 +497,8 @@ const Index = () => {
 };
 
 export default Index;
+
+
+
+
+

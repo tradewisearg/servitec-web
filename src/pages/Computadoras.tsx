@@ -19,6 +19,8 @@ const Computadoras = () => (
         src="/BAN-PC.png"
         alt="Banner Computadoras"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
+        loading="eager"
+        decoding="async"
       />
 
       {/* Capa oscura para legibilidad (Overlay) */}
@@ -26,8 +28,8 @@ const Computadoras = () => (
 
       {/* Contenido */}
       <div className="container relative z-10 max-w-2xl text-center">
-        <h1 className="font-display text-4xl font-bold">Computadoras</h1>
-        <p className="mt-4 text-lg text-background/70">Reparaciones, armado de PC y mantenimientos completos.</p>
+        <h1 className="font-display text-3xl font-bold sm:text-4xl">Computadoras</h1>
+        <p className="mt-4 text-base text-background/70 sm:text-lg">Reparaciones, armado de PC y mantenimientos completos.</p>
       </div>
     </section>
 

@@ -19,6 +19,8 @@ const Consolas = () => (
         src="/BAN-CONS.png"
         alt="Banner Consolas"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
+        loading="eager"
+        decoding="async"
       />
 
       {/* Capa oscura para legibilidad (Overlay) */}
@@ -26,8 +28,8 @@ const Consolas = () => (
 
       {/* Contenido */}
       <div className="container relative z-10 max-w-2xl text-center">
-        <h1 className="font-display text-4xl font-bold">Consolas</h1>
-        <p className="mt-4 text-lg text-background/70">Especialistas en PlayStation 4, PlayStation 5 y Xbox.</p>
+        <h1 className="font-display text-3xl font-bold sm:text-4xl">Consolas</h1>
+        <p className="mt-4 text-base text-background/70 sm:text-lg">Especialistas en PlayStation 4, PlayStation 5 y Xbox.</p>
       </div>
     </section>
     

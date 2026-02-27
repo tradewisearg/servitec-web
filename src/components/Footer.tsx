@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Phone, Clock, Mail } from "lucide-react";
+import { MapPin, Phone, Clock } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -15,11 +15,13 @@ const Footer = () => {
                   src="/logo.png"
                   alt="ServiTec Logo"
                   className="h-full w-full object-contain"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
 
               {/* Texto ServiTec */}
-              <span className="font-display text-xl font-bold tracking-tight text-bold">
+              <span className="font-display text-xl font-bold tracking-tight text-background">
                 Servi<span className="text-primary">Tec</span>
               </span>
             </Link>

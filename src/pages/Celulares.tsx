@@ -19,6 +19,8 @@ const Celulares = () => (
         src="/BAN-CEL.png"
         alt="Banner Celulares"
         className="absolute inset-0 h-full w-full object-cover opacity-70"
+        loading="eager"
+        decoding="async"
       />
 
       {/* Capa oscura para legibilidad (Overlay) */}
@@ -26,10 +28,10 @@ const Celulares = () => (
 
       {/* Contenido */}
       <div className="container relative z-10 max-w-2xl text-center">
-        <h1 className="font-display text-4xl font-extrabold md:text-5xl">
+        <h1 className="font-display text-3xl font-extrabold sm:text-4xl md:text-5xl">
           Celulares
         </h1>
-        <p className="mt-4 text-lg text-slate-200">
+        <p className="mt-4 text-base text-slate-200 sm:text-lg">
           Reparamos todas las marcas y vendemos equipos sellados.
         </p>
       </div>

@@ -2,17 +2,19 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Celulares from "./pages/Celulares";
-import Computadoras from "./pages/Computadoras";
-import Consolas from "./pages/Consolas";
-import Tienda from "./pages/Tienda";
-import Condiciones from "./pages/Condiciones";
-import Presupuesto from "./pages/Presupuesto";
-import NotFound from "./pages/NotFound";
-import Stock from "./pages/Stock";
-import Admin from "./pages/Admin";
+
+const Index = lazy(() => import("./pages/Index"));
+const Celulares = lazy(() => import("./pages/Celulares"));
+const Computadoras = lazy(() => import("./pages/Computadoras"));
+const Consolas = lazy(() => import("./pages/Consolas"));
+const Tienda = lazy(() => import("./pages/Tienda"));
+const Condiciones = lazy(() => import("./pages/Condiciones"));
+const Presupuesto = lazy(() => import("./pages/Presupuesto"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Stock = lazy(() => import("./pages/Stock"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 const queryClient = new QueryClient();
 
@@ -22,18 +24,22 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/celulares" element={<Celulares />} />
-          <Route path="/computadoras" element={<Computadoras />} />
-          <Route path="/consolas" element={<Consolas />} />
-          <Route path="/tienda" element={<Tienda />} />
-          <Route path="/condiciones" element={<Condiciones />} />
-          <Route path="/presupuesto" element={<Presupuesto />} />
-          <Route path="/stock" element={<Stock />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense
+          fallback={<div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Cargando...</div>}
+        >
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/celulares" element={<Celulares />} />
+            <Route path="/computadoras" element={<Computadoras />} />
+            <Route path="/consolas" element={<Consolas />} />
+            <Route path="/tienda" element={<Tienda />} />
+            <Route path="/condiciones" element={<Condiciones />} />
+            <Route path="/presupuesto" element={<Presupuesto />} />
+            <Route path="/stock" element={<Stock />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

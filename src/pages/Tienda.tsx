@@ -22,7 +22,7 @@ const Tienda = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
-  const [orden, setOrden] = useState("");
+  const [orden, setOrden] = useState<"" | "asc" | "desc">("");
 
   useEffect(() => {
     const stockQuery = query(collection(db, "stock"), orderBy("nombre"));
@@ -55,8 +55,16 @@ const Tienda = () => {
     return lista;
   }, [productos, busqueda, orden]);
 
-  const categorias = useMemo(
-    () => [...new Set(productosFiltrados.map((p) => p.categoria))],
+  const productosAgrupados = useMemo(
+    () =>
+      Array.from(
+        productosFiltrados.reduce((mapa, producto) => {
+          const lista = mapa.get(producto.categoria) ?? [];
+          lista.push(producto);
+          mapa.set(producto.categoria, lista);
+          return mapa;
+        }, new Map<string, Producto[]>())
+      ),
     [productosFiltrados]
   );
 
@@ -67,12 +75,14 @@ const Tienda = () => {
           src="/BAN-TN.png"
           alt="Banner Tienda"
           className="absolute inset-0 h-full w-full object-cover opacity-70"
+          loading="eager"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-slate-950/60" />
 
         <div className="container relative z-10 max-w-2xl text-center">
-          <h1 className="font-display text-4xl font-bold">Tienda Completa</h1>
-          <p className="mt-4 text-lg text-background/70">Stock actualizado en tiempo real.</p>
+          <h1 className="font-display text-3xl font-bold sm:text-4xl">Tienda Completa</h1>
+          <p className="mt-4 text-base text-background/70 sm:text-lg">Stock actualizado en tiempo real.</p>
         </div>
       </section>
 
@@ -82,19 +92,21 @@ const Tienda = () => {
             <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-cyan-200/50 blur-3xl dark:bg-cyan-500/10" />
             <div className="pointer-events-none absolute -left-20 bottom-0 h-56 w-56 rounded-full bg-emerald-200/50 blur-3xl dark:bg-emerald-500/10" />
 
-            <div className="mb-12 flex flex-col gap-6 md:flex-row md:justify-between">
+            <div className="mb-12 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <input
               type="text"
               placeholder="Buscar producto..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 md:w-80"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 md:max-w-sm"
+              aria-label="Buscar producto por nombre"
             />
 
             <select
               value={orden}
-              onChange={(e) => setOrden(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800"
+              onChange={(e) => setOrden(e.target.value as "" | "asc" | "desc")}
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:w-auto"
+              aria-label="Ordenar productos por precio"
             >
               <option value="">Ordenar</option>
               <option value="asc">Precio menor a mayor</option>
@@ -113,12 +125,12 @@ const Tienda = () => {
             </div>
           )}
 
-          {!loading && categorias.length === 0 && (
+          {!loading && productosAgrupados.length === 0 && (
             <p className="text-center text-muted-foreground">No hay productos encontrados.</p>
           )}
 
           {!loading &&
-            categorias.map((categoria) => (
+            productosAgrupados.map(([categoria, productosDeCategoria]) => (
               <div key={categoria} className="mb-16">
                 <h2 className="mb-8 inline-flex rounded-full border border-slate-300 bg-slate-100 px-4 py-1.5 text-xl font-bold text-slate-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
                   {categoria}
@@ -128,9 +140,7 @@ const Tienda = () => {
                   layout
                   className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
                 >
-                  {productosFiltrados
-                    .filter((p) => p.categoria === categoria)
-                    .map((producto) => (
+                  {productosDeCategoria.map((producto) => (
                       <motion.div
                         key={producto.id}
                         layout
@@ -146,6 +156,7 @@ const Tienda = () => {
                               className="h-48 w-full object-cover transition duration-300 group-hover:scale-105"
                               loading="lazy"
                               decoding="async"
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                             />
                           )}
 

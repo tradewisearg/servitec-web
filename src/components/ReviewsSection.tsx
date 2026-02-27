@@ -51,28 +51,29 @@ const ReviewsSection = () => {
   }, []);
 
   return (
-    <section className="py-24 bg-slate-50">
+    <section className="bg-slate-50 py-16 sm:py-24">
       <div className="container">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-black">
+        <div className="mb-10 text-center sm:mb-16">
+          <h2 className="text-3xl font-bold text-black sm:text-4xl">
             Lo que dicen nuestros clientes
           </h2>
-          <p className="mt-4 text-base text-gray-600">
+          <p className="mt-4 text-sm text-gray-600 sm:text-base">
             Opiniones reales verificadas en Google
           </p>
         </div>
 
-        <div className="relative w-full max-w-4xl mx-auto">
+        <div className="relative mx-auto w-full max-w-4xl overflow-hidden">
           <div
             className="flex transition-transform duration-700 ease-in-out"
             style={{
               transform: `translateX(-${index * 100}%)`,
             }}
+            aria-live="polite"
           >
             {reviews.map((review, i) => (
-              <div key={i} className="min-w-full px-6">
-                <div className="bg-current backdrop-blur-md border border-white/10 rounded-3xl p-10 shadow-2xl">
-                  <div className="flex justify-center mb-4">
+              <div key={i} className="min-w-full px-1 sm:px-6">
+                <div className="rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl backdrop-blur-md sm:p-10">
+                  <div className="mb-4 flex justify-center">
                     {Array.from({ length: review.rating }).map((_, i) => (
                       <Star
                         key={i}
@@ -82,11 +83,11 @@ const ReviewsSection = () => {
                     ))}
                   </div>
 
-                  <p className="text-center text-zinc-300 text-lg italic">
+                  <p className="text-center text-base italic text-zinc-300 sm:text-lg">
                     “{review.text}”
                   </p>
 
-                  <p className="mt-6 text-center text-white font-semibold">
+                  <p className="mt-6 text-center font-semibold text-white">
                     {review.name}
                   </p>
                 </div>
@@ -95,12 +96,12 @@ const ReviewsSection = () => {
           </div>
         </div>
 
-        <div className="text-center mt-10">
+        <div className="mt-8 text-center sm:mt-10">
           <a
             href="https://maps.app.goo.gl/t5uqsut8TFLtVH4m9"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 transition"
+            className="text-sm text-blue-500 transition hover:text-blue-400 sm:text-base"
           >
             Ver todas las reseñas en Google →
           </a>

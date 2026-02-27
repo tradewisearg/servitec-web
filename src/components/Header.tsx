@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,22 +16,28 @@ const Header = () => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center justify-between">
         
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex min-w-0 items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg">
             <img
               src="/logo.png"
               alt="ServiTec Logo"
               className="h-full w-full object-contain"
+              loading="eager"
+              decoding="async"
             />
           </div>
 
           {/* Texto ServiTec */}
-          <span className="font-display text-xl font-bold tracking-tight text-foreground">
+          <span className="truncate font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
             Servi<span className="text-primary">Tec</span>
           </span>
         </Link>
@@ -70,6 +76,7 @@ const Header = () => {
           onClick={() => setOpen(!open)}
           className="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground lg:hidden"
           aria-label="Toggle menu"
+          aria-expanded={open}
         >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { products } from "@/data/products";
@@ -7,7 +8,10 @@ const formatPrice = (price: number) => {
 };
 
 const Stock = () => {
-  const sortedProducts = [...products].sort((a, b) => a.promo - b.promo);
+  const sortedProducts = useMemo(
+    () => [...products].sort((a, b) => a.promo - b.promo),
+    []
+  );
 
   return (
     <Layout>
@@ -18,6 +22,8 @@ const Stock = () => {
           src="/BAN-STK.png"
           alt="Banner Consolas"
           className="absolute inset-0 h-full w-full object-cover opacity-70"
+          loading="eager"
+          decoding="async"
         />
 
         {/* Capa oscura para legibilidad (Overlay) */}
@@ -46,6 +52,9 @@ const Stock = () => {
                   src={p.image}
                   alt="Producto"
                   className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
 
                 {/* Specs sobre imagen */}
