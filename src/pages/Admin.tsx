@@ -32,6 +32,22 @@ interface Producto {
   imagen: string;
 }
 
+interface EquipoStock {
+  id: string;
+  nombre: string;
+  marca: string;
+  modelo: string;
+  almacenamiento: string;
+  ram: string;
+  warranty: string;
+  condition: "Sellado" | "Reacondicionado" | string;
+  original: number;
+  promo: number;
+  imagen: string;
+  estado: "disponible" | "vendido" | string;
+  vendidoAt?: { toDate?: () => Date } | null;
+}
+
 interface Movimiento {
   tipo: "entrada" | "salida" | "venta" | string;
   producto: string;
@@ -213,6 +229,8 @@ const Admin = () => {
   const [ventasHistoricas, setVentasHistoricas] = useState<Movimiento[]>([]);
   const [visibleProductos, setVisibleProductos] = useState(INVENTARIO_PAGE_SIZE);
   const [visibleMovimientos, setVisibleMovimientos] = useState(HISTORIAL_PAGE_SIZE);
+  const [equiposStock, setEquiposStock] = useState<EquipoStock[]>([]);
+  const [visibleEquipos, setVisibleEquipos] = useState(INVENTARIO_PAGE_SIZE);
 
   const [form, setForm] = useState({
     nombre: "",
@@ -240,17 +258,49 @@ const Admin = () => {
   const [archivoCsv, setArchivoCsv] = useState<File | null>(null);
   const [importandoCsv, setImportandoCsv] = useState(false);
   const [uiMessage, setUiMessage] = useState<UiMessage | null>(null);
+  const [equipoForm, setEquipoForm] = useState({
+    nombre: "",
+    marca: "",
+    modelo: "",
+    almacenamiento: "",
+    ram: "",
+    warranty: "",
+    condition: "Sellado",
+    original: "",
+    promo: "",
+    estado: "disponible"
+  });
+  const [equipoEditando, setEquipoEditando] = useState<EquipoStock | null>(null);
+  const [equipoFormEdit, setEquipoFormEdit] = useState({
+    nombre: "",
+    marca: "",
+    modelo: "",
+    almacenamiento: "",
+    ram: "",
+    warranty: "",
+    condition: "Sellado",
+    original: "",
+    promo: "",
+    estado: "disponible"
+  });
+  const [equipoImage, setEquipoImage] = useState<File | null>(null);
+  const [equipoPreview, setEquipoPreview] = useState<string | null>(null);
+  const [equipoImageEdit, setEquipoImageEdit] = useState<File | null>(null);
+  const [equipoPreviewEdit, setEquipoPreviewEdit] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubStock: (() => void) | undefined;
+    let unsubEquipos: (() => void) | undefined;
     let unsubMovimientos: (() => void) | undefined;
     let unsubVentas: (() => void) | undefined;
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       unsubStock?.();
+      unsubEquipos?.();
       unsubMovimientos?.();
       unsubVentas?.();
       unsubStock = undefined;
+      unsubEquipos = undefined;
       unsubMovimientos = undefined;
       unsubVentas = undefined;
 
@@ -258,6 +308,7 @@ const Admin = () => {
         setIsAuth(false);
         setRole(null);
         setProductos([]);
+        setEquiposStock([]);
         setMovimientos([]);
         setVentasHistoricas([]);
         return;
@@ -270,6 +321,11 @@ const Admin = () => {
       const stockQuery = query(collection(db, "stock"), orderBy("nombre"));
       unsubStock = onSnapshot(stockQuery, (stockSnap) => {
         setProductos(stockSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Producto)));
+      });
+
+      const equiposQuery = query(collection(db, "equipos_stock"), orderBy("nombre"));
+      unsubEquipos = onSnapshot(equiposQuery, (equiposSnap) => {
+        setEquiposStock(equiposSnap.docs.map((d) => ({ id: d.id, ...d.data() } as EquipoStock)));
       });
 
       const movimientosQuery = query(
@@ -289,6 +345,7 @@ const Admin = () => {
 
     return () => {
       unsubStock?.();
+      unsubEquipos?.();
       unsubMovimientos?.();
       unsubVentas?.();
       unsubAuth();
@@ -344,6 +401,18 @@ const Admin = () => {
       if (preview) URL.revokeObjectURL(preview);
     };
   }, [preview]);
+
+  useEffect(() => {
+    return () => {
+      if (equipoPreview) URL.revokeObjectURL(equipoPreview);
+    };
+  }, [equipoPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (equipoPreviewEdit) URL.revokeObjectURL(equipoPreviewEdit);
+    };
+  }, [equipoPreviewEdit]);
 
   const abrirEditor = useCallback((producto: Producto) => {
     setProductoEditando(producto);
@@ -417,6 +486,22 @@ const Admin = () => {
     setPreview(URL.createObjectURL(file));
   }, [preview]);
 
+  const handleEquipoImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEquipoImage(file);
+    if (equipoPreview) URL.revokeObjectURL(equipoPreview);
+    setEquipoPreview(URL.createObjectURL(file));
+  }, [equipoPreview]);
+
+  const handleEquipoImageEditChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEquipoImageEdit(file);
+    if (equipoPreviewEdit) URL.revokeObjectURL(equipoPreviewEdit);
+    setEquipoPreviewEdit(URL.createObjectURL(file));
+  }, [equipoPreviewEdit]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -470,6 +555,141 @@ const Admin = () => {
       setPreview(null);
     },
     [form, image, role]
+  );
+
+  const crearEquipo = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (role === "viewer") return;
+
+      let imageUrl = "";
+      if (equipoImage) {
+        let imageToUpload = equipoImage;
+        try {
+          imageToUpload = await optimizeImageForUpload(equipoImage);
+        } catch {
+          setUiMessage({
+            type: "info",
+            text: "No se pudo optimizar la imagen del equipo. Se subio el archivo original."
+          });
+        }
+
+        const storageRef = ref(storage, `productos/${Date.now()}-${imageToUpload.name}`);
+        await uploadBytes(storageRef, imageToUpload);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      const estado = equipoForm.estado || "disponible";
+      await setDoc(doc(collection(db, "equipos_stock")), {
+        nombre: equipoForm.nombre,
+        marca: equipoForm.marca,
+        modelo: equipoForm.modelo,
+        almacenamiento: equipoForm.almacenamiento,
+        ram: equipoForm.ram,
+        warranty: equipoForm.warranty,
+        condition: equipoForm.condition,
+        original: Number(equipoForm.original),
+        promo: Number(equipoForm.promo),
+        imagen: imageUrl,
+        estado,
+        vendidoAt: estado === "vendido" ? serverTimestamp() : null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      setEquipoForm({
+        nombre: "",
+        marca: "",
+        modelo: "",
+        almacenamiento: "",
+        ram: "",
+        warranty: "",
+        condition: "Sellado",
+        original: "",
+        promo: "",
+        estado: "disponible"
+      });
+      setEquipoImage(null);
+      setEquipoPreview(null);
+    },
+    [equipoForm, equipoImage, role]
+  );
+
+  const abrirEditorEquipo = useCallback((equipo: EquipoStock) => {
+    setEquipoEditando(equipo);
+    setEquipoFormEdit({
+      nombre: equipo.nombre || "",
+      marca: equipo.marca || "",
+      modelo: equipo.modelo || "",
+      almacenamiento: equipo.almacenamiento || "",
+      ram: equipo.ram || "",
+      warranty: equipo.warranty || "",
+      condition: equipo.condition || "Sellado",
+      original: String(equipo.original ?? ""),
+      promo: String(equipo.promo ?? ""),
+      estado: (equipo.estado || "disponible") as "disponible" | "vendido" | string
+    });
+  }, []);
+
+  const guardarEquipoEdicion = useCallback(async () => {
+    if (!equipoEditando || role === "viewer") return;
+
+    let imageUrl = equipoEditando.imagen || "";
+    if (equipoImageEdit) {
+      let imageToUpload = equipoImageEdit;
+      try {
+        imageToUpload = await optimizeImageForUpload(equipoImageEdit);
+      } catch {
+        setUiMessage({
+          type: "info",
+          text: "No se pudo optimizar la imagen del equipo. Se subio el archivo original."
+        });
+      }
+
+      const storageRef = ref(storage, `productos/${Date.now()}-${imageToUpload.name}`);
+      await uploadBytes(storageRef, imageToUpload);
+      imageUrl = await getDownloadURL(storageRef);
+    }
+
+    const estadoPrevio = String(equipoEditando.estado || "disponible").toLowerCase();
+    const estadoNuevo = String(equipoFormEdit.estado || "disponible").toLowerCase();
+    const pasaAVendido = estadoPrevio !== "vendido" && estadoNuevo === "vendido";
+
+    await setDoc(
+      doc(db, "equipos_stock", equipoEditando.id),
+      {
+        nombre: equipoFormEdit.nombre,
+        marca: equipoFormEdit.marca,
+        modelo: equipoFormEdit.modelo,
+        almacenamiento: equipoFormEdit.almacenamiento,
+        ram: equipoFormEdit.ram,
+        warranty: equipoFormEdit.warranty,
+        condition: equipoFormEdit.condition,
+        original: Number(equipoFormEdit.original),
+        promo: Number(equipoFormEdit.promo),
+        imagen: imageUrl,
+        estado: estadoNuevo,
+        vendidoAt: estadoNuevo === "vendido" ? (pasaAVendido ? serverTimestamp() : equipoEditando.vendidoAt || null) : null,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    setEquipoEditando(null);
+    setEquipoImageEdit(null);
+    setEquipoPreviewEdit(null);
+  }, [equipoEditando, equipoFormEdit, equipoImageEdit, role]);
+
+  const marcarEquipoVendido = useCallback(
+    async (equipo: EquipoStock) => {
+      if (role === "viewer") return;
+      await setDoc(
+        doc(db, "equipos_stock", equipo.id),
+        { estado: "vendido", vendidoAt: serverTimestamp(), updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    },
+    [role]
   );
 
   const registrarVenta = useCallback(
@@ -528,6 +748,17 @@ const Admin = () => {
       if (role === "viewer") return;
       await deleteDoc(doc(db, "stock", id));
       setProductoEditando(null);
+    },
+    [role]
+  );
+
+  const eliminarEquipo = useCallback(
+    async (id: string) => {
+      if (role === "viewer") return;
+      await deleteDoc(doc(db, "equipos_stock", id));
+      setEquipoEditando(null);
+      setEquipoImageEdit(null);
+      setEquipoPreviewEdit(null);
     },
     [role]
   );
@@ -855,6 +1086,11 @@ const Admin = () => {
   const movimientosVisibles = useMemo(
     () => movimientos.slice(0, visibleMovimientos),
     [movimientos, visibleMovimientos]
+  );
+
+  const equiposVisibles = useMemo(
+    () => equiposStock.slice(0, visibleEquipos),
+    [equiposStock, visibleEquipos]
   );
 
   if (!isAuth) return <AdminLogin onLogin={() => setIsAuth(true)} />;
@@ -1289,6 +1525,324 @@ const Admin = () => {
         </motion.section>
         </div>
 
+        <motion.section
+          className="rounded-3xl border border-white/10 bg-white p-4 text-slate-900 shadow-2xl sm:p-8"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={blockAnimation}
+        >
+          <h2 className="mb-6 text-lg font-semibold sm:text-xl">Equipos sellados y reacondicionados</h2>
+
+          {role !== "viewer" && (
+            <form
+              onSubmit={crearEquipo}
+              className="mb-8 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-5"
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <input
+                  placeholder="Nombre"
+                  value={equipoForm.nombre}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, nombre: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  placeholder="Marca"
+                  value={equipoForm.marca}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, marca: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  placeholder="Modelo"
+                  value={equipoForm.modelo}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, modelo: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  placeholder="Almacenamiento"
+                  value={equipoForm.almacenamiento}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, almacenamiento: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  placeholder="RAM"
+                  value={equipoForm.ram}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, ram: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  placeholder="Garantia"
+                  value={equipoForm.warranty}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, warranty: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  type="number"
+                  placeholder="Precio original"
+                  value={equipoForm.original}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, original: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <input
+                  type="number"
+                  placeholder="Precio promo"
+                  value={equipoForm.promo}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, promo: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  required
+                />
+                <select
+                  value={equipoForm.condition}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, condition: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                >
+                  <option value="Sellado">Sellado</option>
+                  <option value="Reacondicionado">Reacondicionado</option>
+                </select>
+                <select
+                  value={equipoForm.estado}
+                  onChange={(e) => setEquipoForm((prev) => ({ ...prev, estado: e.target.value }))}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3"
+                >
+                  <option value="disponible">Disponible</option>
+                  <option value="vendido">Vendido</option>
+                </select>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEquipoImageChange}
+                  className="rounded-lg border p-2.5 text-sm sm:p-3 sm:col-span-2 xl:col-span-1"
+                />
+              </div>
+              {equipoPreview && (
+                <img
+                  src={equipoPreview}
+                  className="h-24 rounded-lg object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white sm:w-auto sm:text-base"
+              >
+                Guardar equipo
+              </button>
+            </form>
+          )}
+
+          {equiposStock.length === 0 && <p className="text-gray-500">No hay equipos cargados.</p>}
+
+          <div className="space-y-4">
+            {equiposVisibles.map((equipo) => {
+              const vendido = String(equipo.estado || "disponible").toLowerCase() === "vendido";
+              return (
+                <div
+                  key={equipo.id}
+                  className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    {equipo.imagen && (
+                      <img
+                        src={equipo.imagen}
+                        className="h-16 w-16 shrink-0 rounded-lg object-cover sm:h-20 sm:w-20"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="break-words text-sm font-semibold sm:text-base">{equipo.nombre}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${vendido ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          {vendido ? "Vendido" : "Disponible"}
+                        </span>
+                      </div>
+                      <p className="break-words text-xs text-slate-600 sm:text-sm">
+                        {equipo.marca} {equipo.modelo} • {equipo.almacenamiento} • {equipo.ram}
+                      </p>
+                      <p className="break-words text-xs text-slate-600 sm:text-sm">
+                        {equipo.condition} • Garantia: {equipo.warranty}
+                      </p>
+                      <p className="text-xs font-semibold text-emerald-700 sm:text-sm">
+                        Promo: {currency.format(Number(equipo.promo || 0))} | Original: {currency.format(Number(equipo.original || 0))}
+                      </p>
+                    </div>
+                  </div>
+
+                  {role !== "viewer" && (
+                    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                      <button
+                        onClick={() => abrirEditorEquipo(equipo)}
+                        className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-slate-100 sm:flex-none"
+                      >
+                        Editar
+                      </button>
+                      {!vendido && (
+                        <button
+                          onClick={() => marcarEquipoVendido(equipo)}
+                          className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 sm:flex-none"
+                        >
+                          Marcar vendido
+                        </button>
+                      )}
+                      <button
+                        onClick={() => eliminarEquipo(equipo.id)}
+                        className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-600 sm:flex-none"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {visibleEquipos < equiposStock.length && (
+            <div className="mt-6 flex justify-center">
+              <button
+              onClick={() => setVisibleEquipos((prev) => prev + INVENTARIO_PAGE_SIZE)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium transition hover:bg-slate-100"
+            >
+              Cargar mas equipos
+            </button>
+            </div>
+          )}
+        </motion.section>
+
+        <AnimatePresence>
+          {equipoEditando && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl sm:p-8"
+                initial={{ scale: 0.94, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.98, opacity: 0 }}
+              >
+                <button
+                  onClick={() => {
+                    setEquipoEditando(null);
+                    setEquipoImageEdit(null);
+                    setEquipoPreviewEdit(null);
+                  }}
+                  className="absolute right-3 top-3 rounded-md p-2 transition hover:bg-slate-100 sm:right-4 sm:top-4"
+                >
+                  X
+                </button>
+
+                <h2 className="mb-6 text-lg font-semibold sm:text-xl">Editar equipo</h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <input
+                    value={equipoFormEdit.nombre}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, nombre: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Nombre"
+                  />
+                  <input
+                    value={equipoFormEdit.marca}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, marca: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Marca"
+                  />
+                  <input
+                    value={equipoFormEdit.modelo}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, modelo: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Modelo"
+                  />
+                  <input
+                    value={equipoFormEdit.almacenamiento}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, almacenamiento: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Almacenamiento"
+                  />
+                  <input
+                    value={equipoFormEdit.ram}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, ram: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="RAM"
+                  />
+                  <input
+                    value={equipoFormEdit.warranty}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, warranty: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Garantia"
+                  />
+                  <input
+                    type="number"
+                    value={equipoFormEdit.original}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, original: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Precio original"
+                  />
+                  <input
+                    type="number"
+                    value={equipoFormEdit.promo}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, promo: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                    placeholder="Precio promo"
+                  />
+                  <select
+                    value={equipoFormEdit.condition}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, condition: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  >
+                    <option value="Sellado">Sellado</option>
+                    <option value="Reacondicionado">Reacondicionado</option>
+                  </select>
+                  <select
+                    value={equipoFormEdit.estado}
+                    onChange={(e) => setEquipoFormEdit((prev) => ({ ...prev, estado: e.target.value }))}
+                    className="rounded-lg border p-2.5 text-sm sm:p-3"
+                  >
+                    <option value="disponible">Disponible</option>
+                    <option value="vendido">Vendido</option>
+                  </select>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <input type="file" accept="image/*" onChange={handleEquipoImageEditChange} />
+                  {(equipoPreviewEdit || equipoEditando.imagen) && (
+                    <img
+                      src={equipoPreviewEdit || equipoEditando.imagen}
+                      className="h-24 rounded-lg object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                </div>
+
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    onClick={() => eliminarEquipo(equipoEditando.id)}
+                    className="w-full rounded-lg bg-red-500 px-4 py-2.5 text-sm font-medium text-white sm:w-auto"
+                  >
+                    Eliminar equipo
+                  </button>
+                  <button
+                    onClick={guardarEquipoEdicion}
+                    className="w-full rounded-lg bg-black px-6 py-2.5 text-sm font-medium text-white sm:w-auto"
+                  >
+                    Guardar cambios
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
           {productoEditando && (
             <motion.div
@@ -1502,5 +2056,3 @@ const Card = memo(({ title, value }: { title: string; value: ReactNode }) => (
 ));
 
 export default Admin;
-
-

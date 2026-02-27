@@ -16,6 +16,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Public storefront for sealed/reconditioned devices.
+    match /equipos_stock/{equipoId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // Internal logs/sales history: only admins.
     match /movimientos/{movId} {
       allow read, create, update, delete: if isAdmin();
