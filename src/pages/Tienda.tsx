@@ -150,26 +150,38 @@ const Tienda = () => {
                       >
                         <Card className="group overflow-hidden border-slate-200 bg-white/90 transition hover:-translate-y-1 hover:shadow-xl dark:border-zinc-700 dark:bg-zinc-900/90">
                           {producto.imagen && (
-                            <img
-                              src={producto.imagen}
-                              alt={producto.nombre}
-                              className="h-48 w-full object-cover transition duration-300 group-hover:scale-105"
-                              loading="lazy"
-                              decoding="async"
-                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                            />
+                            <div className="flex h-52 w-full items-center justify-center bg-white p-3 dark:bg-white">
+                              <img
+                                src={producto.imagen}
+                                alt={producto.nombre}
+                                className="h-full w-full object-contain object-center transition duration-300 group-hover:scale-105"
+                                loading="lazy"
+                                decoding="async"
+                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                              />
+                            </div>
                           )}
 
                           <CardContent className="p-6">
                             <h3 className="text-lg font-semibold">{producto.nombre}</h3>
 
-                            <p className="mt-2 text-xl font-bold text-primary">
-                              ${producto.precio.toLocaleString()}
-                            </p>
-
-                            <p className="text-sm text-muted-foreground">
-                              {producto.stock > 0 ? "En stock" : "Sin stock"}
-                            </p>
+                            {producto.stock === 0 ? (
+                              <p
+                                className="mt-2 text-xl font-extrabold uppercase tracking-wide text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                                aria-label="Sin stock"
+                              >
+                                Sin stock
+                              </p>
+                            ) : (
+                              <>
+                                <p className="mt-2 text-xl font-bold text-primary">
+                                  ${producto.precio.toLocaleString()}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  En stock
+                                </p>
+                              </>
+                            )}
 
                             <Button
                               asChild

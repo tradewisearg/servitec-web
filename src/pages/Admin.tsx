@@ -808,7 +808,8 @@ const Admin = () => {
       return {
         ...p,
         margen,
-        stockBajo: p.stock < 5,
+        sinStock: p.stock === 0,
+        stockBajo: p.stock > 1 && p.stock <= 5,
         sinVentas30Dias: !financialData.ventasUltimos30.has(p.nombre),
         margenBajo: margen < 10
       };
@@ -816,7 +817,7 @@ const Admin = () => {
   }, [financialData.ventasUltimos30, productos]);
 
   const productosConAlertas = useMemo(
-    () => alertasProductos.filter((p) => p.stockBajo || p.sinVentas30Dias || p.margenBajo),
+    () => alertasProductos.filter((p) => p.sinStock || p.stockBajo || p.sinVentas30Dias || p.margenBajo),
     [alertasProductos]
   );
 
@@ -826,6 +827,7 @@ const Admin = () => {
         alertasProductos.map((p) => [
           p.id,
           {
+            sinStock: p.sinStock,
             stockBajo: p.stockBajo,
             sinVentas30Dias: p.sinVentas30Dias,
             margenBajo: p.margenBajo
@@ -1058,9 +1060,14 @@ const Admin = () => {
                     >
                       <p className="font-semibold text-slate-800">{producto.nombre}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
+                        {producto.sinStock && (
+                          <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
+                            Sin stock
+                          </span>
+                        )}
                         {producto.stockBajo && (
                           <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                            Stock menor a 5
+                            Stock bajo (2-5)
                           </span>
                         )}
                         {producto.sinVentas30Dias && (
@@ -1393,6 +1400,7 @@ const ProductoRow = memo(
     role: Role | null;
     cantidad: number;
     alertas?: {
+      sinStock: boolean;
       stockBajo: boolean;
       sinVentas30Dias: boolean;
       margenBajo: boolean;
@@ -1417,6 +1425,11 @@ const ProductoRow = memo(
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-semibold">{producto.nombre}</h3>
+            {alertas?.sinStock && (
+              <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
+                Sin stock
+              </span>
+            )}
             {alertas?.stockBajo && (
               <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
                 Stock bajo
