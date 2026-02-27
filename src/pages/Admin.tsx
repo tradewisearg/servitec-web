@@ -809,7 +809,7 @@ const Admin = () => {
         ...p,
         margen,
         sinStock: p.stock === 0,
-        stockBajo: p.stock > 1 && p.stock <= 5,
+        stockBajo: p.stock > 0 && p.stock <= 5,
         sinVentas30Dias: !financialData.ventasUltimos30.has(p.nombre),
         margenBajo: margen < 10
       };
@@ -1067,7 +1067,7 @@ const Admin = () => {
                         )}
                         {producto.stockBajo && (
                           <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                            Stock bajo (2-5)
+                            Stock bajo
                           </span>
                         )}
                         {producto.sinVentas30Dias && (
