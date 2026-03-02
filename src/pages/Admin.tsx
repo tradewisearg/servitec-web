@@ -68,6 +68,21 @@ interface ResumenFinancieroDiario {
   unidadesVendidas: number;
 }
 
+interface AjustePrecioSnapshot {
+  timestamp: number;
+  cambios: Array<{
+    id: string;
+    precioAnterior: number;
+    precioNuevo: number;
+  }>;
+}
+
+interface ConfirmacionAjustePrecio {
+  accion: "incremento" | "decremento" | "deshacer";
+  porcentaje?: number;
+  cambios: AjustePrecioSnapshot["cambios"];
+}
+
 type Role = "admin" | "viewer";
 type UiMessage = { type: "success" | "error" | "info"; text: string };
 
@@ -243,6 +258,11 @@ const Admin = () => {
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [cantidadVenta, setCantidadVenta] = useState<Record<string, number>>({});
+  const [productosSeleccionados, setProductosSeleccionados] = useState<string[]>([]);
+  const [porcentajeAjuste, setPorcentajeAjuste] = useState("");
+  const [aplicandoAjustePrecios, setAplicandoAjustePrecios] = useState(false);
+  const [historialAjustesPrecios, setHistorialAjustesPrecios] = useState<AjustePrecioSnapshot[]>([]);
+  const [confirmacionAjustePrecio, setConfirmacionAjustePrecio] = useState<ConfirmacionAjustePrecio | null>(null);
   const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
 
   const [formEdit, setFormEdit] = useState({
@@ -395,6 +415,14 @@ const Admin = () => {
     const timeout = setTimeout(() => setUiMessage(null), 5000);
     return () => clearTimeout(timeout);
   }, [uiMessage]);
+
+  useEffect(() => {
+    const idsDisponibles = new Set(productos.map((p) => p.id));
+    setProductosSeleccionados((prev) => {
+      const next = prev.filter((id) => idsDisponibles.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [productos]);
 
   useEffect(() => {
     return () => {
@@ -767,6 +795,141 @@ const Admin = () => {
     setCantidadVenta((prev) => ({ ...prev, [id]: value }));
   }, []);
 
+  const toggleSeleccionProducto = useCallback((id: string, checked: boolean) => {
+    setProductosSeleccionados((prev) => {
+      if (checked) {
+        if (prev.includes(id)) return prev;
+        return [...prev, id];
+      }
+      return prev.filter((selectedId) => selectedId !== id);
+    });
+  }, []);
+
+  const toggleSeleccionTodos = useCallback(() => {
+    setProductosSeleccionados((prev) => {
+      if (productos.length === 0) return [];
+      if (prev.length === productos.length) return [];
+      return productos.map((p) => p.id);
+    });
+  }, [productos]);
+
+  const aplicarAjustePrecioCliente = useCallback(
+    (tipo: "incremento" | "decremento") => {
+      if (role === "viewer") return;
+      if (productosSeleccionados.length === 0) {
+        setUiMessage({ type: "error", text: "Selecciona al menos un producto para ajustar precios." });
+        return;
+      }
+
+      const porcentaje = Number(porcentajeAjuste.replace(",", "."));
+      if (Number.isNaN(porcentaje) || porcentaje <= 0) {
+        setUiMessage({ type: "error", text: "Ingresa un porcentaje mayor a 0." });
+        return;
+      }
+
+      const factor = tipo === "incremento" ? 1 + porcentaje / 100 : 1 - porcentaje / 100;
+      if (factor < 0) {
+        setUiMessage({
+          type: "error",
+          text: "El decremento no puede ser mayor al 100%."
+        });
+        return;
+      }
+
+      const productosSeleccionadosSet = new Set(productosSeleccionados);
+      const productosAAjustar = productos.filter((p) => productosSeleccionadosSet.has(p.id));
+      if (productosAAjustar.length === 0) {
+        setUiMessage({ type: "error", text: "No se encontraron productos validos para ajustar." });
+        return;
+      }
+
+      const cambios = productosAAjustar.map((producto) => {
+        const precioAnterior = Number(producto.precio || 0);
+        const precioNuevo = Math.max(0, Number((precioAnterior * factor).toFixed(2)));
+        return { id: producto.id, precioAnterior, precioNuevo };
+      });
+
+      setConfirmacionAjustePrecio({
+        accion: tipo,
+        porcentaje,
+        cambios
+      });
+    },
+    [porcentajeAjuste, productos, productosSeleccionados, role]
+  );
+
+  const deshacerUltimoAjustePrecioCliente = useCallback(() => {
+    if (role === "viewer") return;
+    const ultimoAjuste = historialAjustesPrecios[historialAjustesPrecios.length - 1];
+    if (!ultimoAjuste) {
+      setUiMessage({ type: "error", text: "No hay ajustes recientes para deshacer." });
+      return;
+    }
+
+    const idsVigentes = new Set(productos.map((p) => p.id));
+    const cambiosVigentes = ultimoAjuste.cambios.filter((cambio) => idsVigentes.has(cambio.id));
+    if (cambiosVigentes.length === 0) {
+      setUiMessage({ type: "error", text: "Los productos del ultimo ajuste ya no estan disponibles." });
+      return;
+    }
+
+    setConfirmacionAjustePrecio({
+      accion: "deshacer",
+      cambios: cambiosVigentes
+    });
+  }, [historialAjustesPrecios, productos, role]);
+
+  const confirmarAjustePrecioCliente = useCallback(async () => {
+    if (role === "viewer" || !confirmacionAjustePrecio) return;
+
+    setAplicandoAjustePrecios(true);
+    try {
+      let batch = writeBatch(db);
+      let ops = 0;
+      const commitBatch = async () => {
+        if (ops === 0) return;
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+      };
+
+      if (confirmacionAjustePrecio.accion === "deshacer") {
+        for (const cambio of confirmacionAjustePrecio.cambios) {
+          batch.update(doc(db, "stock", cambio.id), { precio: cambio.precioAnterior });
+          ops += 1;
+          if (ops >= 400) await commitBatch();
+        }
+        await commitBatch();
+        setHistorialAjustesPrecios((prev) => prev.slice(0, -1));
+        setUiMessage({
+          type: "success",
+          text: `Se revirtio el ultimo ajuste en ${confirmacionAjustePrecio.cambios.length} producto(s).`
+        });
+      } else {
+        for (const cambio of confirmacionAjustePrecio.cambios) {
+          batch.update(doc(db, "stock", cambio.id), { precio: cambio.precioNuevo });
+          ops += 1;
+          if (ops >= 400) await commitBatch();
+        }
+        await commitBatch();
+        setHistorialAjustesPrecios((prev) => [
+          ...prev,
+          { timestamp: Date.now(), cambios: confirmacionAjustePrecio.cambios }
+        ]);
+        setUiMessage({
+          type: "success",
+          text: `Se actualizo el Precio cliente de ${confirmacionAjustePrecio.cambios.length} producto(s).`
+        });
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "No se pudo completar el ajuste.";
+      setUiMessage({ type: "error", text: msg });
+    } finally {
+      setAplicandoAjustePrecios(false);
+      setConfirmacionAjustePrecio(null);
+    }
+  }, [confirmacionAjustePrecio, role]);
+
   const importarStockDesdeCsv = useCallback(async () => {
     if (role === "viewer" || !archivoCsv) return;
 
@@ -1082,6 +1245,8 @@ const Admin = () => {
     () => productos.slice(0, visibleProductos),
     [productos, visibleProductos]
   );
+  const productosSeleccionadosSet = useMemo(() => new Set(productosSeleccionados), [productosSeleccionados]);
+  const todosLosProductosSeleccionados = productos.length > 0 && productosSeleccionados.length === productos.length;
 
   const movimientosVisibles = useMemo(
     () => movimientos.slice(0, visibleMovimientos),
@@ -1445,6 +1610,65 @@ const Admin = () => {
           variants={blockAnimation}
         >
           <h2 className="mb-6 text-xl font-semibold">Gestion de inventario</h2>
+          {role !== "viewer" && (
+            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-slate-700">
+                  Seleccionados: <b>{productosSeleccionados.length}</b> de {productos.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleSeleccionTodos}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                  >
+                    {todosLosProductosSeleccionados ? "Deseleccionar todo" : "Seleccionar todo"}
+                  </button>
+                  <button
+                    onClick={() => setProductosSeleccionados([])}
+                    disabled={productosSeleccionados.length === 0}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Limpiar seleccion
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={porcentajeAjuste}
+                  onChange={(e) => setPorcentajeAjuste(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm sm:max-w-[220px]"
+                  placeholder="Porcentaje"
+                />
+                <button
+                  onClick={() => aplicarAjustePrecioCliente("incremento")}
+                  disabled={aplicandoAjustePrecios || productosSeleccionados.length === 0}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {aplicandoAjustePrecios ? "Aplicando..." : "Incrementar %"}
+                </button>
+                <button
+                  onClick={() => aplicarAjustePrecioCliente("decremento")}
+                  disabled={aplicandoAjustePrecios || productosSeleccionados.length === 0}
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {aplicandoAjustePrecios ? "Aplicando..." : "Decrementar %"}
+                </button>
+                <button
+                  onClick={deshacerUltimoAjustePrecioCliente}
+                  disabled={aplicandoAjustePrecios || historialAjustesPrecios.length === 0}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Deshacer ultimo ajuste
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-600">
+                El ajuste se aplica sobre el campo Precio cliente de los productos seleccionados.
+              </p>
+            </div>
+          )}
           {productos.length === 0 && <p className="text-gray-500">No hay productos cargados.</p>}
 
           <motion.div
@@ -1464,6 +1688,8 @@ const Admin = () => {
                 onCantidadChange={handleCantidadChange}
                 onRegistrarVenta={registrarVenta}
                 onAbrirEditor={abrirEditor}
+                seleccionado={productosSeleccionadosSet.has(p.id)}
+                onToggleSeleccion={toggleSeleccionProducto}
               />
             ))}
           </motion.div>
@@ -1718,6 +1944,51 @@ const Admin = () => {
         </motion.section>
 
         <AnimatePresence>
+          {confirmacionAjustePrecio && (
+            <motion.div
+              className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl"
+                initial={{ scale: 0.94, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.98, opacity: 0 }}
+              >
+                <h3 className="text-lg font-semibold">Confirmar accion</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {confirmacionAjustePrecio.accion === "deshacer"
+                    ? `Se va a restaurar el Precio cliente anterior en ${confirmacionAjustePrecio.cambios.length} producto(s).`
+                    : `Se va a ${confirmacionAjustePrecio.accion} ${confirmacionAjustePrecio.porcentaje}% el Precio cliente en ${confirmacionAjustePrecio.cambios.length} producto(s).`}
+                </p>
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    onClick={() => setConfirmacionAjustePrecio(null)}
+                    disabled={aplicandoAjustePrecios}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmarAjustePrecioCliente}
+                    disabled={aplicandoAjustePrecios}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      confirmacionAjustePrecio.accion === "deshacer"
+                        ? "bg-rose-600 hover:bg-rose-700"
+                        : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                  >
+                    {aplicandoAjustePrecios ? "Aplicando..." : "Confirmar"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {equipoEditando && (
             <motion.div
               className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
@@ -1948,7 +2219,9 @@ const ProductoRow = memo(
     alertas,
     onCantidadChange,
     onRegistrarVenta,
-    onAbrirEditor
+    onAbrirEditor,
+    seleccionado,
+    onToggleSeleccion
   }: {
     producto: Producto;
     role: Role | null;
@@ -1962,12 +2235,23 @@ const ProductoRow = memo(
     onCantidadChange: (id: string, value: number) => void;
     onRegistrarVenta: (producto: Producto, cantidad: number) => Promise<void>;
     onAbrirEditor: (producto: Producto) => void;
+    seleccionado: boolean;
+    onToggleSeleccion: (id: string, checked: boolean) => void;
   }) => {
     const marginInfo = getMarginData(Number(producto.precio), Number(producto.precioCosto));
 
     return (
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm sm:gap-6 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-4">
+        {role !== "viewer" && (
+          <input
+            type="checkbox"
+            checked={seleccionado}
+            onChange={(e) => onToggleSeleccion(producto.id, e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            aria-label={`Seleccionar ${producto.nombre}`}
+          />
+        )}
         {producto.imagen && (
           <img
             src={producto.imagen}
